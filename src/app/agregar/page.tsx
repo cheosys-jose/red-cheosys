@@ -33,38 +33,30 @@ export default function AgregarPage() {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
-    
-    // Validar máximo 3 imágenes
     if (files.length > 3) {
-      alert('Máximo 3 imágenes por registro')
+      alert('Máximo 3 imágenes')
       return
     }
 
-    // Validar tamaño (2MB cada una)
     const validFiles = files.filter(file => {
       if (file.size > 2 * 1024 * 1024) {
-        alert(`${file.name} es muy grande. Máximo 2MB por imagen.`)
+        alert(`${file.name} es muy grande (máx 2MB)`)
         return false
       }
       if (!file.type.startsWith('image/')) {
-        alert(`${file.name} no es una imagen válida.`)
+        alert(`${file.name} no es una imagen`)
         return false
       }
       return true
     })
 
     setImagenes(validFiles)
-
-    // Crear previews
-    const newPreviews = validFiles.map(file => URL.createObjectURL(file))
-    setPreviews(newPreviews)
+    setPreviews(validFiles.map(file => URL.createObjectURL(file)))
   }
 
   const removeImage = (index: number) => {
-    const newImagenes = imagenes.filter((_, i) => i !== index)
-    const newPreviews = previews.filter((_, i) => i !== index)
-    setImagenes(newImagenes)
-    setPreviews(newPreviews)
+    setImagenes(imagenes.filter((_, i) => i !== index))
+    setPreviews(previews.filter((_, i) => i !== index))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -72,9 +64,6 @@ export default function AgregarPage() {
     setStatus('loading')
 
     try {
-      let recordId = ''
-
-      // Primero, enviar datos del formulario
       const payload: any = {
         tipo,
         ubicacion: formData.ubicacion,
@@ -94,22 +83,16 @@ export default function AgregarPage() {
         body: JSON.stringify(payload)
       })
 
-      if (!submitResponse.ok) {
-        throw new Error('Error al enviar datos')
-      }
+      if (!submitResponse.ok) throw new Error('Error al enviar datos')
 
       const submitData = await submitResponse.json()
-      recordId = submitData.id
+      const recordId = submitData.id
       setGeoData(submitData.geo)
 
-      // Si hay imágenes, subirlas
       if (imagenes.length > 0) {
         const imageFormData = new FormData()
         imageFormData.append('recordId', recordId)
-        
-        imagenes.forEach((image) => {
-          imageFormData.append('images', image)
-        })
+        imagenes.forEach(image => imageFormData.append('images', image))
 
         const uploadResponse = await fetch('/api/upload', {
           method: 'POST',
@@ -118,30 +101,16 @@ export default function AgregarPage() {
 
         if (uploadResponse.ok) {
           const uploadData = await uploadResponse.json()
-          
-          // Actualizar registro con URLs de imágenes
           await fetch('/api/submit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ...payload,
-              id: recordId,
-              imagenes: uploadData.images
-            })
+            body: JSON.stringify({ ...payload, id: recordId, imagenes: uploadData.images })
           })
         }
       }
 
       setStatus('success')
-      setFormData({
-        nombre: '',
-        ubicacion: '',
-        contacto: '',
-        descripcion: '',
-        titulo: '',
-        telefono: '',
-        horario: ''
-      })
+      setFormData({ nombre: '', ubicacion: '', contacto: '', descripcion: '', titulo: '', telefono: '', horario: '' })
       setImagenes([])
       setPreviews([])
     } catch (error) {
@@ -155,34 +124,19 @@ export default function AgregarPage() {
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
           <div className="text-6xl mb-4">✓</div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            ¡Información Enviada!
-          </h2>
-          <p className="text-gray-600 mb-4">
-            Tu aporte se ha guardado correctamente y está disponible para quien lo necesite.
-          </p>
-
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Información Enviada!</h2>
+          <p className="text-gray-600 mb-4">Tu aporte se ha guardado correctamente</p>
           {geoData && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm text-left">
               <p className="font-semibold mb-1">Ubicación detectada:</p>
               <p>📍 {geoData.ciudad}, {geoData.estado}</p>
-              <p className="text-xs text-gray-500 mt-1">
-                Coordenadas: {geoData.lat.toFixed(4)}, {geoData.lng.toFixed(4)}
-              </p>
             </div>
           )}
-
           <div className="space-y-2">
-            <button
-              onClick={() => setStatus('idle')}
-              className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
-            >
+            <button onClick={() => setStatus('idle')} className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
               Agregar Otro
             </button>
-            <Link
-              href="/"
-              className="block w-full px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 text-center"
-            >
+            <Link href="/" className="block w-full px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 text-center">
               Volver al Inicio
             </Link>
           </div>
@@ -195,22 +149,16 @@ export default function AgregarPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 py-12 px-4">
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-8">
-          <Link href="/" className="text-2xl font-bold text-gray-900 hover:text-blue-600">
-            ← Volver al inicio
-          </Link>
+          <Link href="/" className="text-2xl font-bold text-gray-900 hover:text-blue-600">← Volver al inicio</Link>
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Agregar Información
-          </h1>
-          <p className="text-gray-600 mb-6">
-            Comparte información útil para ayudar a otros
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Agregar Información</h1>
+          <p className="text-gray-600 mb-6">Comparte información útil para ayudar a otros</p>
 
           {status === 'error' && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-              Error al enviar. Por favor intenta de nuevo.
+              Error al enviar. Intenta de nuevo.
             </div>
           )}
 
@@ -241,11 +189,7 @@ export default function AgregarPage() {
                 <h2 className="text-xl font-semibold">
                   {TIPOS_REGISTRO.find(t => t.id === tipo)?.icon} {TIPOS_REGISTRO.find(t => t.id === tipo)?.label}
                 </h2>
-                <button
-                  type="button"
-                  onClick={() => setTipo('')}
-                  className="text-sm text-blue-600 hover:underline"
-                >
+                <button type="button" onClick={() => setTipo('')} className="text-sm text-blue-600 hover:underline">
                   Cambiar tipo
                 </button>
               </div>
@@ -262,14 +206,12 @@ export default function AgregarPage() {
                   maxLength={100}
                   required={tipo === 'desaparecido'}
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder={tipo === 'desaparecido' ? 'Nombre completo' : 'Ej: Juan, Familia Pérez, etc.'}
+                  placeholder={tipo === 'desaparecido' ? 'Nombre completo' : 'Ej: Juan, Familia Pérez'}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Ubicación *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ubicación *</label>
                 <input
                   type="text"
                   name="ubicacion"
@@ -301,9 +243,7 @@ export default function AgregarPage() {
               {tipo === 'centro' && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nombre del Centro *
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Centro *</label>
                     <input
                       type="text"
                       name="titulo"
@@ -312,14 +252,11 @@ export default function AgregarPage() {
                       maxLength={150}
                       required
                       className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Ej: Iglesia San José, Club Deportivo, etc."
+                      placeholder="Ej: Iglesia San José"
                     />
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Horario de Atención
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Horario de Atención</label>
                     <input
                       type="text"
                       name="horario"
@@ -327,16 +264,14 @@ export default function AgregarPage() {
                       onChange={handleChange}
                       maxLength={200}
                       className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Ej: Lun-Vie 8am-6pm, Sáb 9am-1pm"
+                      placeholder="Ej: Lun-Vie 8am-6pm"
                     />
                   </div>
                 </>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Descripción *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Descripción *</label>
                 <textarea
                   name="descripcion"
                   value={formData.descripcion}
@@ -346,22 +281,17 @@ export default function AgregarPage() {
                   rows={4}
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder={
-                    tipo === 'necesita' ? 'Describe qué necesitas y por qué...' :
-                    tipo === 'ofrece' ? '¿Qué tipo de ayuda puedes ofrecer?' :
-                    tipo === 'desaparecido' ? 'Última vez visto, descripción física, ropa, etc.' :
-                    'Información adicional sobre el centro...'
+                    tipo === 'necesita' ? 'Describe qué necesitas...' :
+                    tipo === 'ofrece' ? '¿Qué ayuda puedes ofrecer?' :
+                    tipo === 'desaparecido' ? 'Última vez visto, descripción física...' :
+                    'Información adicional...'
                   }
                 />
-                <p className="text-xs text-gray-500 text-right">
-                  {formData.descripcion.length}/2000
-                </p>
+                <p className="text-xs text-gray-500 text-right">{formData.descripcion.length}/2000</p>
               </div>
 
-              {/* Upload de Imágenes */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Fotos (opcional, máximo 3)
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fotos (opcional, máximo 3)</label>
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
                   <input
                     ref={fileInputRef}
@@ -383,11 +313,7 @@ export default function AgregarPage() {
                     <div className="mt-4 grid grid-cols-3 gap-2">
                       {previews.map((preview, index) => (
                         <div key={index} className="relative">
-                          <img
-                            src={preview}
-                            alt={`Preview ${index + 1}`}
-                            className="w-full h-24 object-cover rounded-lg"
-                          />
+                          <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-24 object-cover rounded-lg" />
                           <button
                             type="button"
                             onClick={() => removeImage(index)}
@@ -400,9 +326,7 @@ export default function AgregarPage() {
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Las imágenes se optimizarán automáticamente (WebP, 800x800px)
-                </p>
+                <p className="text-xs text-gray-500 mt-1">Las imágenes se optimizarán automáticamente</p>
               </div>
 
               <button
