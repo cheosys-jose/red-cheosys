@@ -2,21 +2,28 @@
 
 Todos los cambios notables en este proyecto.
 
-## [0.2.0] - 2026-06-28 (EN DESARROLLO)
+## [0.2.0] - 2026-06-28
 
 ### Agregado
-- Sistema de búsqueda con Meilisearch (pendiente)
-- SQLite para almacenamiento de datos
-- Nominatim para geocodificación
-- HTMX para interacciones ligeras
-- PWA con Service Worker
-- Búsqueda por cercanía
-- Mapa con Leaflet (lazy load)
+- ✅ Meilisearch instalado y configurado como servicio systemd
+- ✅ Búsqueda full-text instantánea (<100ms)
+- ✅ Nueva home tipo Google 90s (minimalista, rápida)
+- ✅ Página de búsqueda con filtros por tipo
+- ✅ Integración Meilisearch en API de submit
+- ✅ Cliente Node.js de Meilisearch
+- ✅ Índice "records" con atributos buscables configurados
 
 ### Cambiado
-- Arquitectura: JSON files → SQLite + Meilisearch
-- Frontend: React → HTMX + Alpine.js (progresivo)
-- Mapas: Google Maps → OpenStreetMap
+- Arquitectura: JSON files → JSON + Meilisearch (SQLite pendiente)
+- Frontend: React multi-step → Búsqueda instantánea
+- Home: Formulario complejo → Búsqueda central simple
+
+### Técnico
+- Meilisearch v1.48.2 corriendo en puerto 7700
+- Servicio systemd: meilisearch-red-cheosys.service
+- Master key configurada
+- Atributos buscables: titulo, descripcion, texto_ubicacion, ciudad, tags
+- Filtros: tipo, ciudad, estado, prioridad, tags
 
 ## [0.1.0] - 2026-06-27
 
