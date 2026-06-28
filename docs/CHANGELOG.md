@@ -2,6 +2,23 @@
 
 Todos los cambios notables en este proyecto.
 
+## [0.3.0] - 2026-06-28
+
+### Agregado
+- ✅ Geolocalización con OpenStreetMap (Nominatim)
+- ✅ Búsqueda por cercanía con radio configurable
+- ✅ Cálculo de distancia con fórmula de Haversine
+- ✅ Coordenadas almacenadas en Meilisearch
+- ✅ API endpoint `/api/search/near` para búsqueda geográfica
+- ✅ Reverse geocoding para convertir coordenadas en dirección
+- ✅ Páginas `/agregar`, `/centros`, `/docs`
+
+### Técnico
+- Integración con Nominatim API (OpenStreetMap)
+- Geocodificación automática al enviar formularios
+- Búsqueda geográfica con radio en kilómetros
+- Cliente axios para requests HTTP
+
 ## [0.2.0] - 2026-06-28
 
 ### Agregado
@@ -14,14 +31,9 @@ Todos los cambios notables en este proyecto.
 - ✅ Índice "records" con atributos buscables configurados
 
 ### Cambiado
-- Arquitectura: JSON files → JSON + Meilisearch (SQLite pendiente)
+- Arquitectura: JSON files → JSON + Meilisearch
 - Frontend: React multi-step → Búsqueda instantánea
 - Home: Formulario complejo → Búsqueda central simple
-
-### Corregido
-- ✅ Error de TypeScript en página de búsqueda (tipo 'any')
-- ✅ Loop de restarts en PM2 (output: 'standalone' removido)
-- ✅ Conflicto de procesos de Meilisearch (servicio systemd)
 
 ### Técnico
 - Meilisearch v1.48.2 corriendo en puerto 7700
@@ -29,7 +41,6 @@ Todos los cambios notables en este proyecto.
 - Master key configurada
 - Atributos buscables: titulo, descripcion, texto_ubicacion, ciudad, tags
 - Filtros: tipo, ciudad, estado, prioridad, tags
-- PM2: red-cheosys (ID 8) estable
 
 ## [0.1.0] - 2026-06-27
 
