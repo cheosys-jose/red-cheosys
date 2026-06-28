@@ -2,37 +2,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import { writeFile, readFile, mkdir } from 'fs/promises'
 import path from 'path'
 import crypto from 'crypto'
-import sharp from 'sharp'
 import { indexRecord } from '@/lib/meilisearch'
 import { geocodeAddress } from '@/lib/geolocation'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
-    // Manejar tanto JSON como FormData
-    const contentType = request.headers.get('content-type') || ''
+    const formData = await request.formData()
     
-    let data: any = {}
-    let imagenesFiles: File[] = []
-    
-    if (contentType.includes('multipart/form-data')) {
-      const formData = await request.formData()
-      data.tipo = formData.get('tipo')
-      data.ubicacion = formData.get('ubicacion')
-      data.descripcion = formData.get('descripcion')
-      data.contacto = formData.get('contacto')
-      data.nombre = formData.get('nombre')
-      data.titulo = formData.get('titulo')
-      data.horario = formData.get('horario')
-      
-      // Obtener imágenes
-      const files = formData.getAll('imagenes')
-      imagenesFiles = files.filter(f => f instanceof File) as File[]
-    } else {
-      data = await request.json()
-    }
+    const tipo = formData.get('tipo') as string
+    const ubicacion = formData.get('ubicacion') as string
+    const descripcion = formData.get('descripcion') as string
+    const contacto = formData.get('contacto') as string
+    const nombre = (formData.get('nombre') as string) || ''
+    const titulo = (formData.get('titulo') as string) || ''
+    const horario = (formData.get('horario') as string) || ''
 
-    // Validación
-    if (!data.ubicacion || !data.tipo || !data.descripcion || !data.contacto) {
+    if (!ubicacion || !descripcion || !contacto) {
       return NextResponse.json(
         { error: 'Faltan campos obligatorios' },
         { status: 400 }
@@ -41,89 +28,87 @@ export async function POST(request: NextRequest) {
 
     const id = crypto.randomUUID()
     const timestamp = new Date().toISOString()
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
-    const salt = process.env.IP_SALT || 'default-salt-change-me'
-    const ip_hash = crypto.createHash('sha256').update(ip + salt).digest('hex')
-
+    
     // Geolocalizar
     let geoData: any = null
     try {
-      geoData = await geocodeAddress(data.ubicacion)
+      geoData = await geocodeAddress(ubicacion)
     } catch (error) {
       console.error('Error geolocalizando:', error)
     }
 
-    // Procesar imágenes si existen
+    // Procesar imágenes - SIN SHARP por ahora
     const imageUrls: string[] = []
-    if (imagenesFiles.length > 0) {
+    const files = formData.getAll('imagenes')
+    
+    if (files.length > 0) {
       const yearMonth = new Date().toISOString().substring(0, 7)
       const imagesDir = path.join(process.cwd(), 'data', 'images', yearMonth)
       await mkdir(imagesDir, { recursive: true })
 
-      for (let i = 0; i < Math.min(imagenesFiles.length, 3); i++) {
-        const file = imagenesFiles[i]
+      for (let i = 0; i < Math.min(files.length, 3); i++) {
+        const file = files[i]
+        if (!(file instanceof File)) continue
+        
+        // Validar tamaño (2MB máximo)
+        if (file.size > 2 * 1024 * 1024) {
+          console.log(`⚠️ Imagen ${i + 1} muy grande: ${(file.size / 1024 / 1024).toFixed(2)}MB`)
+          continue
+        }
+        
         if (!file.type.startsWith('image/')) continue
 
         const bytes = await file.arrayBuffer()
         const buffer = Buffer.from(bytes)
         const hash = crypto.createHash('md5').update(buffer).digest('hex').substring(0, 8)
-        const filename = `${id}-${i + 1}-${hash}.webp`
+        
+        // Detectar extensión
+        const ext = file.type.split('/')[1] || 'jpg'
+        const filename = `${id}-${i + 1}-${hash}.${ext}`
         const filepath = path.join(imagesDir, filename)
 
-        const processedImage = await sharp(buffer)
-          .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
-          .webp({ quality: 70 })
-          .toBuffer()
-
-        await writeFile(filepath, processedImage)
+        await writeFile(filepath, buffer)
         imageUrls.push(`/images/${yearMonth}/${filename}`)
       }
     }
 
-    // Crear registro
     const entry = {
       id,
       timestamp,
-      nombre: data.nombre || '',
-      ubicacion: data.ubicacion,
-      tipo: data.tipo,
-      descripcion: data.descripcion,
-      contacto: data.contacto,
-      ip_hash,
-      titulo: data.titulo || `${data.tipo} en ${data.ubicacion}`,
-      texto_ubicacion: data.ubicacion,
+      nombre,
+      ubicacion,
+      tipo: tipo || 'otro',
+      descripcion,
+      contacto,
+      titulo: titulo || `${tipo || 'registro'} en ${ubicacion}`,
+      texto_ubicacion: ubicacion,
       ciudad: geoData?.city || '',
       estado: geoData?.state || '',
-      pais: geoData?.country || 'Venezuela',
+      pais: geoData?.country || '',
       lat: geoData?.lat || null,
       lng: geoData?.lng || null,
-      geo_precision: geoData ? 'exacta' : 'texto',
-      horario: data.horario || '',
+      horario,
       imagenes: imageUrls,
-      tags: [data.tipo],
+      tags: [tipo || 'otro'],
       prioridad: 'media',
       votos_confianza: 0,
       verificado: false,
       estado_moderacion: 'activo'
     }
 
-    // Guardar en JSON
+    // Guardar
     const date = new Date().toISOString().split('T')[0]
-    const dataDir = path.join(process.cwd(), 'data')
-    const filePath = path.join(dataDir, `${date}.json`)
+    const filePath = path.join(process.cwd(), 'data', `${date}.json`)
 
     let entries = []
     try {
-      const existingData = await readFile(filePath, 'utf-8')
-      entries = JSON.parse(existingData)
-    } catch (error) {
-      // Archivo no existe
-    }
+      entries = JSON.parse(await readFile(filePath, 'utf-8'))
+    } catch (error) {}
 
     entries.push(entry)
     await writeFile(filePath, JSON.stringify(entries, null, 2))
 
-    // Indexar en Meilisearch
+    // Indexar
     try {
       await indexRecord(entry)
     } catch (error) {
@@ -132,15 +117,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Datos recibidos correctamente',
+      message: 'Datos recibidos',
       id,
       geo: geoData,
       imagenes: imageUrls
     })
   } catch (error) {
-    console.error('Error al procesar:', error)
+    console.error('ERROR:', error)
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { error: 'Error interno', details: error instanceof Error ? error.message : 'Unknown' },
       { status: 500 }
     )
   }
