@@ -43,6 +43,9 @@ data/
 !next.config.js
 !tailwind.config.js
 !ecosystem.config.js
+
+# Binarios
 meilisearch
-data/meilisearch/
-data/images/
+
+# Logs
+*.log
