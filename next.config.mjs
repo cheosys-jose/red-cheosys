@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  // Sin output: 'standalone' para que next start funcione correctamente
+  experimental: {
+    serverComponentsExternalPackages: ['meilisearch']
+  }
 }
 
 export default nextConfig
