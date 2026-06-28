@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
 
 const TIPOS_REGISTRO = [
@@ -19,14 +19,52 @@ export default function AgregarPage() {
     descripcion: '',
     titulo: '',
     telefono: '',
-    horario: '',
-    tipos_aceptados: [] as string[]
+    horario: ''
   })
+  const [imagenes, setImagenes] = useState<File[]>([])
+  const [previews, setPreviews] = useState<string[]>([])
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [geoData, setGeoData] = useState<any>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
+  }
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    
+    // Validar máximo 3 imágenes
+    if (files.length > 3) {
+      alert('Máximo 3 imágenes por registro')
+      return
+    }
+
+    // Validar tamaño (2MB cada una)
+    const validFiles = files.filter(file => {
+      if (file.size > 2 * 1024 * 1024) {
+        alert(`${file.name} es muy grande. Máximo 2MB por imagen.`)
+        return false
+      }
+      if (!file.type.startsWith('image/')) {
+        alert(`${file.name} no es una imagen válida.`)
+        return false
+      }
+      return true
+    })
+
+    setImagenes(validFiles)
+
+    // Crear previews
+    const newPreviews = validFiles.map(file => URL.createObjectURL(file))
+    setPreviews(newPreviews)
+  }
+
+  const removeImage = (index: number) => {
+    const newImagenes = imagenes.filter((_, i) => i !== index)
+    const newPreviews = previews.filter((_, i) => i !== index)
+    setImagenes(newImagenes)
+    setPreviews(newPreviews)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,8 +72,10 @@ export default function AgregarPage() {
     setStatus('loading')
 
     try {
-      // Preparar datos según el tipo
-      let payload: any = {
+      let recordId = ''
+
+      // Primero, enviar datos del formulario
+      const payload: any = {
         tipo,
         ubicacion: formData.ubicacion,
         contacto: formData.contacto || formData.telefono,
@@ -43,35 +83,67 @@ export default function AgregarPage() {
         nombre: formData.nombre
       }
 
-      // Si es centro, agregar campos extra
       if (tipo === 'centro') {
         payload.titulo = formData.titulo || formData.nombre
         payload.horario = formData.horario
       }
 
-      const response = await fetch('/api/submit', {
+      const submitResponse = await fetch('/api/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        setGeoData(data.geo)
-        setStatus('success')
-        setFormData({
-          nombre: '',
-          ubicacion: '',
-          contacto: '',
-          descripcion: '',
-          titulo: '',
-          telefono: '',
-          horario: '',
-          tipos_aceptados: []
-        })
-      } else {
-        setStatus('error')
+      if (!submitResponse.ok) {
+        throw new Error('Error al enviar datos')
       }
+
+      const submitData = await submitResponse.json()
+      recordId = submitData.id
+      setGeoData(submitData.geo)
+
+      // Si hay imágenes, subirlas
+      if (imagenes.length > 0) {
+        const imageFormData = new FormData()
+        imageFormData.append('recordId', recordId)
+        
+        imagenes.forEach((image) => {
+          imageFormData.append('images', image)
+        })
+
+        const uploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          body: imageFormData
+        })
+
+        if (uploadResponse.ok) {
+          const uploadData = await uploadResponse.json()
+          
+          // Actualizar registro con URLs de imágenes
+          await fetch('/api/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...payload,
+              id: recordId,
+              imagenes: uploadData.images
+            })
+          })
+        }
+      }
+
+      setStatus('success')
+      setFormData({
+        nombre: '',
+        ubicacion: '',
+        contacto: '',
+        descripcion: '',
+        titulo: '',
+        telefono: '',
+        horario: ''
+      })
+      setImagenes([])
+      setPreviews([])
     } catch (error) {
       console.error('Error:', error)
       setStatus('error')
@@ -89,7 +161,7 @@ export default function AgregarPage() {
           <p className="text-gray-600 mb-4">
             Tu aporte se ha guardado correctamente y está disponible para quien lo necesite.
           </p>
-          
+
           {geoData && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm text-left">
               <p className="font-semibold mb-1">Ubicación detectada:</p>
@@ -143,7 +215,6 @@ export default function AgregarPage() {
           )}
 
           {!tipo ? (
-            // Selección de tipo
             <div>
               <h2 className="text-xl font-semibold mb-4">¿Qué tipo de información quieres compartir?</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -165,7 +236,6 @@ export default function AgregarPage() {
               </div>
             </div>
           ) : (
-            // Formulario según tipo
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">
@@ -180,7 +250,6 @@ export default function AgregarPage() {
                 </button>
               </div>
 
-              {/* Campos comunes */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {tipo === 'desaparecido' ? 'Nombre de la persona' : 'Nombre / Referencia'} {tipo !== 'desaparecido' && '(opcional)'}
@@ -211,9 +280,6 @@ export default function AgregarPage() {
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Dirección completa o referencia"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  💡 Sé específico: barrio, calle, referencias cercanas
-                </p>
               </div>
 
               <div>
@@ -232,7 +298,6 @@ export default function AgregarPage() {
                 />
               </div>
 
-              {/* Campos específicos por tipo */}
               {tipo === 'centro' && (
                 <>
                   <div>
@@ -289,6 +354,54 @@ export default function AgregarPage() {
                 />
                 <p className="text-xs text-gray-500 text-right">
                   {formData.descripcion.length}/2000
+                </p>
+              </div>
+
+              {/* Upload de Imágenes */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Fotos (opcional, máximo 3)
+                </label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full py-2 text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    📷 Agregar fotos (máx. 2MB cada una)
+                  </button>
+                  
+                  {previews.length > 0 && (
+                    <div className="mt-4 grid grid-cols-3 gap-2">
+                      {previews.map((preview, index) => (
+                        <div key={index} className="relative">
+                          <img
+                            src={preview}
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Las imágenes se optimizarán automáticamente (WebP, 800x800px)
                 </p>
               </div>
 

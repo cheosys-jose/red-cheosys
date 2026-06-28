@@ -45,3 +45,4 @@ data/
 !ecosystem.config.js
 meilisearch
 data/meilisearch/
+data/images/
