@@ -43,3 +43,5 @@ data/
 !next.config.js
 !tailwind.config.js
 !ecosystem.config.js
+meilisearch
+data/meilisearch/
