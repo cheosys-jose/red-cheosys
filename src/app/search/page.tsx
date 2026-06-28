@@ -1,4 +1,4 @@
-import { searchRecords } from '@/lib/meilisearch'
+import { Client } from 'meilisearch'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
@@ -17,15 +17,29 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const tipo = searchParams.tipo || ''
   const ciudad = searchParams.ciudad || ''
 
+  // Conectar directamente a Meilisearch
+  const client = new Client({
+    host: process.env.MEILISEARCH_URL || 'http://localhost:7700',
+    apiKey: process.env.MEILISEARCH_KEY || 'red-cheosys-2026-change-me'
+  })
+
+  const index = client.index('records')
+
+  // Construir filtros
   const filters: string[] = []
   if (tipo) filters.push(`tipo = "${tipo}"`)
   if (ciudad) filters.push(`ciudad = "${ciudad}"`)
 
   let results: any = { hits: [], estimatedTotalHits: 0, processingTimeMs: 0 }
+  
   try {
-    results = await searchRecords(query, filters.length > 0 ? filters : undefined)
+    results = await index.search(query, {
+      limit: 50,
+      filter: filters.length > 0 ? filters : undefined,
+      attributesToHighlight: ['titulo', 'descripcion']
+    })
   } catch (error) {
-    console.error('Error en búsqueda:', error)
+    console.error('❌ Error en búsqueda:', error)
   }
 
   return (
@@ -139,7 +153,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 </span>
               </div>
 
-              {/* Imágenes - Solo si existen */}
+              {/* Imágenes */}
               {hit.imagenes && hit.imagenes.length > 0 && (
                 <div className="mb-4 grid grid-cols-2 md:grid-cols-3 gap-3">
                   {hit.imagenes.map((img: string, idx: number) => (
