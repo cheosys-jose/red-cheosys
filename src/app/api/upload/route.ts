@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
         .toBuffer()
 
       await writeFile(filepath, processedImage)
+      // Guardar la ruta completa que el middleware puede manejar
       imageUrls.push(`/images/${yearMonth}/${filename}`)
     }
 
