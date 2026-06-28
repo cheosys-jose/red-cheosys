@@ -59,3 +59,10 @@ Todos los cambios notables en este proyecto.
 - PM2 process: red-cheosys (ID 8)
 - Nginx: red.cheosys.com
 - SSL: Certbot (Let's Encrypt)
+
+## [0.3.1] - 2026-06-28
+
+### Corregido
+- ✅ Problema de caché en páginas de búsqueda y centros
+- ✅ Renderizado dinámico forzado con `dynamic = 'force-dynamic'`
+- ✅ Páginas ahora muestran datos en tiempo real
