@@ -123,7 +123,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
         {/* Lista de Resultados */}
         <div className="space-y-4">
-          {results.hits.map((hit: any) => (
+          {results.hits && results.hits.map((hit: any) => (
             <article key={hit.id} className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
               <div className="flex justify-between items-start mb-3">
                 <h2 className="text-xl font-bold text-gray-900">
@@ -139,7 +139,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 </span>
               </div>
 
-              {/* Imágenes */}
+              {/* Imágenes - Solo si existen */}
               {hit.imagenes && hit.imagenes.length > 0 && (
                 <div className="mb-4 grid grid-cols-2 md:grid-cols-3 gap-3">
                   {hit.imagenes.map((img: string, idx: number) => (
