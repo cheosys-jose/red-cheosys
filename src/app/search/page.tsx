@@ -61,22 +61,27 @@ function SearchResults() {
               </span>
             </div>
 
-            {/* IMÁGENES - Solo si existen */}
+            {/* IMÁGENES - Usar URL directa de /api/images/ */}
             {hit.imagenes && hit.imagenes.length > 0 && (
               <div className="mb-4 grid grid-cols-2 md:grid-cols-3 gap-3">
-                {hit.imagenes.map((img: string, idx: number) => (
-                  <img
-                    key={idx}
-                    src={img}
-                    alt={`Imagen ${idx + 1}`}
-                    className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors cursor-pointer"
-                    onError={(e) => {
-                      console.error('Error cargando imagen:', img)
-                      ;(e.target as HTMLImageElement).style.display = 'none'
-                    }}
-                    onLoad={() => console.log('✅ Imagen cargada:', img)}
-                  />
-                ))}
+                {hit.imagenes.map((img: string, idx: number) => {
+                  // Convertir /images/... a /api/images/...
+                  const imageUrl = img.startsWith('/api/') ? img : `/api${img}`
+                  
+                  return (
+                    <img
+                      key={idx}
+                      src={imageUrl}
+                      alt={`Imagen ${idx + 1}`}
+                      className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors cursor-pointer"
+                      onError={(e) => {
+                        console.error('❌ Error cargando imagen:', imageUrl)
+                        ;(e.target as HTMLImageElement).style.display = 'none'
+                      }}
+                      onLoad={() => console.log('✅ Imagen cargada:', imageUrl)}
+                    />
+                  )
+                })}
               </div>
             )}
 
