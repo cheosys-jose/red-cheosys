@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { writeFile, readFile, mkdir } from 'fs/promises'
 import path from 'path'
 import crypto from 'crypto'
+import sharp from 'sharp'
 import { indexRecord } from '@/lib/meilisearch'
 import { geocodeAddress } from '@/lib/geolocation'
 
@@ -9,6 +10,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('📥 [SUBMIT] Iniciando...')
     const formData = await request.formData()
     
     const tipo = formData.get('tipo') as string
@@ -19,11 +21,10 @@ export async function POST(request: NextRequest) {
     const titulo = (formData.get('titulo') as string) || ''
     const horario = (formData.get('horario') as string) || ''
 
+    console.log('📋 Datos:', { tipo, ubicacion })
+
     if (!ubicacion || !descripcion || !contacto) {
-      return NextResponse.json(
-        { error: 'Faltan campos obligatorios' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Faltan campos' }, { status: 400 })
     }
 
     const id = crypto.randomUUID()
@@ -34,12 +35,13 @@ export async function POST(request: NextRequest) {
     try {
       geoData = await geocodeAddress(ubicacion)
     } catch (error) {
-      console.error('Error geolocalizando:', error)
+      console.error('Error geo:', error)
     }
 
-    // Procesar imágenes - SIN SHARP por ahora
+    // Procesar imágenes
     const imageUrls: string[] = []
     const files = formData.getAll('imagenes')
+    console.log(`📷 Archivos: ${files.length}`)
     
     if (files.length > 0) {
       const yearMonth = new Date().toISOString().substring(0, 7)
@@ -47,28 +49,44 @@ export async function POST(request: NextRequest) {
       await mkdir(imagesDir, { recursive: true })
 
       for (let i = 0; i < Math.min(files.length, 3); i++) {
-        const file = files[i]
-        if (!(file instanceof File)) continue
+        const file: any = files[i]
         
-        // Validar tamaño (2MB máximo)
-        if (file.size > 2 * 1024 * 1024) {
-          console.log(`⚠️ Imagen ${i + 1} muy grande: ${(file.size / 1024 / 1024).toFixed(2)}MB`)
+        // Verificar si es un archivo válido
+        if (!file || !file.type || !file.arrayBuffer) {
+          console.log(`⚠️ Archivo ${i} inválido`)
           continue
         }
         
-        if (!file.type.startsWith('image/')) continue
-
-        const bytes = await file.arrayBuffer()
-        const buffer = Buffer.from(bytes)
-        const hash = crypto.createHash('md5').update(buffer).digest('hex').substring(0, 8)
+        console.log(`📄 File ${i}: ${(file.size/1024).toFixed(1)}KB, type: ${file.type}`)
         
-        // Detectar extensión
-        const ext = file.type.split('/')[1] || 'jpg'
-        const filename = `${id}-${i + 1}-${hash}.${ext}`
-        const filepath = path.join(imagesDir, filename)
+        if (file.size > 2 * 1024 * 1024) {
+          console.log('⚠️ Muy grande')
+          continue
+        }
+        
+        if (!file.type.startsWith('image/')) {
+          console.log('⚠️ No es imagen')
+          continue
+        }
 
-        await writeFile(filepath, buffer)
-        imageUrls.push(`/images/${yearMonth}/${filename}`)
+        try {
+          const bytes = await file.arrayBuffer()
+          const buffer = Buffer.from(bytes)
+          const hash = crypto.createHash('md5').update(buffer).digest('hex').substring(0, 8)
+          const filename = `${id}-${i + 1}-${hash}.webp`
+          const filepath = path.join(imagesDir, filename)
+
+          const processedImage = await sharp(buffer)
+            .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: 70 })
+            .toBuffer()
+
+          await writeFile(filepath, processedImage)
+          imageUrls.push(`/images/${yearMonth}/${filename}`)
+          console.log(`✅ Imagen guardada: ${filename}`)
+        } catch (err) {
+          console.error('❌ Error procesando imagen:', err)
+        }
       }
     }
 
@@ -99,12 +117,11 @@ export async function POST(request: NextRequest) {
     // Guardar
     const date = new Date().toISOString().split('T')[0]
     const filePath = path.join(process.cwd(), 'data', `${date}.json`)
-
     let entries = []
     try {
       entries = JSON.parse(await readFile(filePath, 'utf-8'))
-    } catch (error) {}
-
+    } catch (e) {}
+    
     entries.push(entry)
     await writeFile(filePath, JSON.stringify(entries, null, 2))
 
@@ -123,7 +140,7 @@ export async function POST(request: NextRequest) {
       imagenes: imageUrls
     })
   } catch (error) {
-    console.error('ERROR:', error)
+    console.error('❌ ERROR:', error)
     return NextResponse.json(
       { error: 'Error interno', details: error instanceof Error ? error.message : 'Unknown' },
       { status: 500 }
