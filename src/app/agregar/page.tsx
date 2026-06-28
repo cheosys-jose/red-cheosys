@@ -25,6 +25,7 @@ export default function AgregarPage() {
   const [previews, setPreviews] = useState<string[]>([])
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [geoData, setGeoData] = useState<any>(null)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -34,17 +35,17 @@ export default function AgregarPage() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     if (files.length > 3) {
-      alert('Máximo 3 imágenes')
+      alert('Máximo 3 imágenes permitidas')
       return
     }
 
     const validFiles = files.filter(file => {
       if (file.size > 2 * 1024 * 1024) {
-        alert(`${file.name} es muy grande (máx 2MB)`)
+        alert(`${file.name} excede el tamaño máximo de 2MB`)
         return false
       }
       if (!file.type.startsWith('image/')) {
-        alert(`${file.name} no es una imagen`)
+        alert(`${file.name} no es una imagen válida`)
         return false
       }
       return true
@@ -62,8 +63,11 @@ export default function AgregarPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setStatus('loading')
+    setUploadProgress(0)
 
     try {
+      // Paso 1: Enviar datos básicos
+      setUploadProgress(20)
       const payload: any = {
         tipo,
         ubicacion: formData.ubicacion,
@@ -83,16 +87,24 @@ export default function AgregarPage() {
         body: JSON.stringify(payload)
       })
 
-      if (!submitResponse.ok) throw new Error('Error al enviar datos')
+      if (!submitResponse.ok) {
+        const error = await submitResponse.json()
+        throw new Error(error.error || 'Error al enviar datos')
+      }
 
+      setUploadProgress(50)
       const submitData = await submitResponse.json()
       const recordId = submitData.id
       setGeoData(submitData.geo)
 
+      // Paso 2: Subir imágenes si existen
       if (imagenes.length > 0) {
+        setUploadProgress(70)
         const imageFormData = new FormData()
         imageFormData.append('recordId', recordId)
-        imagenes.forEach(image => imageFormData.append('images', image))
+        imagenes.forEach(image => {
+          imageFormData.append('images', image)
+        })
 
         const uploadResponse = await fetch('/api/upload', {
           method: 'POST',
@@ -101,20 +113,33 @@ export default function AgregarPage() {
 
         if (uploadResponse.ok) {
           const uploadData = await uploadResponse.json()
-          await fetch('/api/submit', {
-            method: 'POST',
+          console.log('✅ Imágenes subidas:', uploadData.images)
+          setUploadProgress(90)
+          
+          // Paso 3: Actualizar registro con URLs de imágenes
+          const updateResponse = await fetch(`/api/records/${recordId}`, {
+            method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...payload, id: recordId, imagenes: uploadData.images })
+            body: JSON.stringify({ imagenes: uploadData.images })
           })
+          
+          if (updateResponse.ok) {
+            console.log('✅ Registro actualizado con imágenes')
+          } else {
+            console.warn('⚠️ No se pudo actualizar el registro con las imágenes')
+          }
+        } else {
+          console.warn('⚠️ Error subiendo imágenes:', await uploadResponse.text())
         }
       }
 
+      setUploadProgress(100)
       setStatus('success')
       setFormData({ nombre: '', ubicacion: '', contacto: '', descripcion: '', titulo: '', telefono: '', horario: '' })
       setImagenes([])
       setPreviews([])
     } catch (error) {
-      console.error('Error:', error)
+      console.error('❌ Error:', error)
       setStatus('error')
     }
   }
@@ -128,8 +153,13 @@ export default function AgregarPage() {
           <p className="text-gray-600 mb-4">Tu aporte se ha guardado correctamente</p>
           {geoData && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm text-left">
-              <p className="font-semibold mb-1">Ubicación detectada:</p>
-              <p>📍 {geoData.ciudad}, {geoData.estado}</p>
+              <p className="font-semibold mb-1">📍 Ubicación detectada:</p>
+              <p>{geoData.ciudad}, {geoData.estado}</p>
+            </div>
+          )}
+          {imagenes.length > 0 && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 text-sm">
+              <p>📷 {imagenes.length} imagen(es) adjunta(s)</p>
             </div>
           )}
           <div className="space-y-2">
@@ -159,6 +189,17 @@ export default function AgregarPage() {
           {status === 'error' && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
               Error al enviar. Intenta de nuevo.
+            </div>
+          )}
+
+          {uploadProgress > 0 && uploadProgress < 100 && (
+            <div className="mb-4">
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${uploadProgress}%` }}></div>
+              </div>
+              <p className="text-sm text-gray-600 mt-2 text-center">
+                {uploadProgress < 50 ? 'Enviando datos...' : uploadProgress < 70 ? 'Subiendo imágenes...' : 'Finalizando...'}
+              </p>
             </div>
           )}
 
