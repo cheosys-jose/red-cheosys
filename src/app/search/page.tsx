@@ -1,6 +1,10 @@
 import { searchRecords } from '@/lib/meilisearch'
 import Link from 'next/link'
 
+// Forzar renderizado dinámico (no cachear)
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 interface SearchPageProps {
   searchParams: {
     q?: string
@@ -23,6 +27,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   let results: any = { hits: [], estimatedTotalHits: 0, processingTimeMs: 0 }
   try {
     results = await searchRecords(query, filters.length > 0 ? filters : undefined)
+    console.log('Búsqueda realizada:', { query, filters, total: results.estimatedTotalHits })
   } catch (error) {
     console.error('Error en búsqueda:', error)
   }

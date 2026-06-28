@@ -1,11 +1,16 @@
 import { searchRecords } from '@/lib/meilisearch'
 import Link from 'next/link'
 
+// Forzar renderizado dinámico (no cachear)
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function CentrosPage() {
   let results: any = { hits: [], estimatedTotalHits: 0 }
   
   try {
     results = await searchRecords('', ['tipo = "centro"'])
+    console.log('Centros encontrados:', results.estimatedTotalHits)
   } catch (error) {
     console.error('Error buscando centros:', error)
   }
