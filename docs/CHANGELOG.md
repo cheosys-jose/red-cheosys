@@ -18,12 +18,18 @@ Todos los cambios notables en este proyecto.
 - Frontend: React multi-step → Búsqueda instantánea
 - Home: Formulario complejo → Búsqueda central simple
 
+### Corregido
+- ✅ Error de TypeScript en página de búsqueda (tipo 'any')
+- ✅ Loop de restarts en PM2 (output: 'standalone' removido)
+- ✅ Conflicto de procesos de Meilisearch (servicio systemd)
+
 ### Técnico
 - Meilisearch v1.48.2 corriendo en puerto 7700
 - Servicio systemd: meilisearch-red-cheosys.service
 - Master key configurada
 - Atributos buscables: titulo, descripcion, texto_ubicacion, ciudad, tags
 - Filtros: tipo, ciudad, estado, prioridad, tags
+- PM2: red-cheosys (ID 8) estable
 
 ## [0.1.0] - 2026-06-27
 
