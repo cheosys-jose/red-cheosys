@@ -2,20 +2,31 @@
 
 import { useState } from 'react'
 
+const TIPOS_AYUDA = [
+  { id: 'alimento', label: 'Comida', icon: '🍚', desc: 'Alimentos, víveres' },
+  { id: 'medicina', label: 'Medicinas', icon: '💊', desc: 'Medicamentos, insumos' },
+  { id: 'agua', label: 'Agua', icon: '💧', desc: 'Agua potable' },
+  { id: 'ropa', label: 'Ropa', icon: '👕', desc: 'Ropa, calzado, mantas' },
+  { id: 'transporte', label: 'Transporte', icon: '🚗', desc: 'Movilidad, traslado' },
+  { id: 'alojamiento', label: 'Refugio', icon: '🏠', desc: 'Dónde dormir' },
+  { id: 'otro', label: 'Otro', icon: '🤝', desc: 'Otra necesidad' },
+]
+
 export default function Hero() {
+  const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
-    nombre: '',
-    ubicacion: '',
     tipo: '',
+    ubicacion: '',
+    contacto: '',
     descripcion: '',
-    contacto: ''
+    nombre: ''
   })
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setStatus('loading')
-
+    
     try {
       const response = await fetch('/api/submit', {
         method: 'POST',
@@ -25,147 +36,236 @@ export default function Hero() {
 
       if (response.ok) {
         setStatus('success')
-        setFormData({ nombre: '', ubicacion: '', tipo: '', descripcion: '', contacto: '' })
-        setTimeout(() => setStatus('idle'), 3000)
+        setFormData({ tipo: '', ubicacion: '', contacto: '', descripcion: '', nombre: '' })
+        setStep(1)
       } else {
         setStatus('error')
-        setTimeout(() => setStatus('idle'), 3000)
       }
     } catch (error) {
       setStatus('error')
-      setTimeout(() => setStatus('idle'), 3000)
     }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value })
+  }
+
+  const canAdvance = () => {
+    if (step === 1) return formData.tipo !== ''
+    if (step === 2) return formData.ubicacion !== ''
+    if (step === 3) return formData.contacto !== ''
+    return true
+  }
+
+  const nextStep = () => {
+    if (canAdvance() && step < 3) setStep(step + 1)
+  }
+
+  const prevStep = () => {
+    if (step > 1) setStep(step - 1)
+  }
+
+  // Pantalla de éxito
+  if (status === 'success') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+          <div className="text-6xl mb-4">✓</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            ¡Recibido!
+          </h2>
+          <p className="text-gray-600 mb-6">
+            Tu mensaje llegó a quienes pueden ayudar. Estamos trabajando para contactarte pronto.
+          </p>
+          <button
+            onClick={() => setStatus('idle')}
+            className="text-emerald-600 font-medium hover:underline"
+          >
+            Enviar otra solicitud
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="max-w-2xl w-full bg-white rounded-2xl shadow-2xl p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Necesito Datos
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
+      <div className="max-w-2xl w-full">
+        {/* Encabezado emocional */}
+        <div className="text-center mb-6">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-3">
+            ¿Cómo podemos ayudarte?
           </h1>
-          <p className="text-lg text-gray-600">
-            Mientras más detallados tus datos, mejor podemos ayudar
+          <p className="text-lg text-gray-600 max-w-xl mx-auto">
+            Cuéntanos qué necesitas. Cada dato que compartas nos ayuda a llegar más rápido y mejor.
           </p>
-          <p className="text-sm text-gray-500 mt-2">
-            A un pueblo unido nadie lo detiene
+          <p className="text-sm text-gray-500 mt-2 italic">
+            Estamos contigo.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nombre (opcional)
-            </label>
-            <input
-              type="text"
-              name="nombre"
-              value={formData.nombre}
-              onChange={handleChange}
-              maxLength={100}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Tu nombre o referencia"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Ubicación *
-            </label>
-            <input
-              type="text"
-              name="ubicacion"
-              value={formData.ubicacion}
-              onChange={handleChange}
-              maxLength={200}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Dirección o referencia"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tipo de Ayuda *
-            </label>
-            <select
-              name="tipo"
-              value={formData.tipo}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Selecciona una opción</option>
-              <option value="alimento">Alimento</option>
-              <option value="medicina">Medicina</option>
-              <option value="agua">Agua</option>
-              <option value="ropa">Ropa</option>
-              <option value="transporte">Transporte</option>
-              <option value="alojamiento">Alojamiento</option>
-              <option value="otro">Otro</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Descripción *
-            </label>
-            <textarea
-              name="descripcion"
-              value={formData.descripcion}
-              onChange={handleChange}
-              maxLength={2000}
-              required
-              rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Describe detalladamente qué necesitas"
-            />
-            <p className="text-xs text-gray-500 mt-1">{formData.descripcion.length}/2000 caracteres</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Contacto *
-            </label>
-            <input
-              type="text"
-              name="contacto"
-              value={formData.contacto}
-              onChange={handleChange}
-              maxLength={200}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Teléfono, email o redes sociales"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={status === 'loading'}
-            className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {status === 'loading' ? 'Enviando...' : 'Enviar Información'}
-          </button>
-
-          {status === 'success' && (
-            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative">
-              ¡Gracias! Tu información ha sido recibida.
+        {/* Progreso visual */}
+        <div className="flex items-center justify-center mb-6 gap-2">
+          {[1, 2, 3].map((s) => (
+            <div key={s} className="flex items-center">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
+                step >= s 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-200 text-gray-500'
+              }`}>
+                {s}
+              </div>
+              {s < 3 && (
+                <div className={`w-12 h-1 transition-all ${
+                  step > s ? 'bg-blue-600' : 'bg-gray-200'
+                }`} />
+              )}
             </div>
-          )}
+          ))}
+        </div>
 
+        <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8">
           {status === 'error' && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-              Error al enviar. Por favor intenta de nuevo.
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+              Algo salió mal. Por favor intenta de nuevo.
             </div>
           )}
-        </form>
+
+          <form onSubmit={handleSubmit}>
+            {/* PASO 1: ¿Qué necesitas? */}
+            {step === 1 && (
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-1">
+                  ¿Qué tipo de ayuda necesitas?
+                </h2>
+                <p className="text-sm text-gray-500 mb-4">
+                  Toca la que más se acerque a tu situación
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {TIPOS_AYUDA.map((tipo) => (
+                    <button
+                      key={tipo.id}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, tipo: tipo.id })}
+                      className={`p-4 rounded-xl border-2 text-left transition-all ${
+                        formData.tipo === tipo.id
+                          ? 'border-blue-600 bg-blue-50 shadow-md'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="text-3xl mb-1">{tipo.icon}</div>
+                      <div className="font-semibold text-gray-900">{tipo.label}</div>
+                      <div className="text-xs text-gray-500 mt-1">{tipo.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* PASO 2: ¿Dónde estás? */}
+            {step === 2 && (
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-1">
+                  ¿Dónde podemos encontrarte?
+                </h2>
+                <p className="text-sm text-gray-500 mb-4">
+                  Sé específico: barrio, calle, referencias cercanas
+                </p>
+                <input
+                  type="text"
+                  name="ubicacion"
+                  value={formData.ubicacion}
+                  onChange={handleChange}
+                  maxLength={200}
+                  autoFocus
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
+                  placeholder="Ej: Barrio El Carmen, calle 5, casa azul frente a la cancha"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  💡 Entre más detalles, más rápido llegamos
+                </p>
+              </div>
+            )}
+
+            {/* PASO 3: Cómo contactarte */}
+            {step === 3 && (
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-1">
+                  ¿Cómo podemos contactarte?
+                </h2>
+                <p className="text-sm text-gray-500 mb-4">
+                  Para coordinar la ayuda
+                </p>
+                <input
+                  type="text"
+                  name="contacto"
+                  value={formData.contacto}
+                  onChange={handleChange}
+                  maxLength={200}
+                  required
+                  autoFocus
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg mb-4"
+                  placeholder="Teléfono o WhatsApp"
+                />
+
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cuéntanos más (opcional)
+                </label>
+                <textarea
+                  name="descripcion"
+                  value={formData.descripcion}
+                  onChange={handleChange}
+                  maxLength={2000}
+                  rows={3}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-2"
+                  placeholder="¿Cuántas personas son? ¿Hay niños o adultos mayores? ¿Algo importante que debamos saber?"
+                />
+                <p className="text-xs text-gray-500 text-right">
+                  {formData.descripcion.length}/2000
+                </p>
+              </div>
+            )}
+
+            {/* Navegación */}
+            <div className="flex justify-between mt-8 pt-6 border-t border-gray-100">
+              {step > 1 ? (
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  className="px-6 py-3 text-gray-600 font-medium hover:text-gray-900"
+                >
+                  ← Atrás
+                </button>
+              ) : (
+                <div />
+              )}
+
+              {step < 3 ? (
+                <button
+                  type="button"
+                  onClick={nextStep}
+                  disabled={!canAdvance()}
+                  className="px-8 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed shadow-lg"
+                >
+                  Siguiente →
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={status === 'loading' || !canAdvance()}
+                  className="px-8 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-colors disabled:bg-gray-300 disabled:cursor-none shadow-lg"
+                >
+                  {status === 'loading' ? 'Enviando...' : 'Enviar solicitud ✓'}
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+
+        {/* Validación social */}
+        <p className="text-center text-xs text-gray-500 mt-6">
+          🔒 Tu información es confidencial y solo se usa para coordinar ayuda
+        </p>
       </div>
     </div>
   )
