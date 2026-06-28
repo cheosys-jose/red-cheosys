@@ -20,7 +20,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   if (ciudad) filters.push(`ciudad = "${ciudad}"`)
 
   // Buscar en Meilisearch
-  let results = { hits: [], estimatedTotalHits: 0, processingTimeMs: 0 }
+  let results: any = { hits: [], estimatedTotalHits: 0, processingTimeMs: 0 }
   try {
     results = await searchRecords(query, filters.length > 0 ? filters : undefined)
   } catch (error) {
