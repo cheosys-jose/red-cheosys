@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     })
     
     try {
-      await meilisearch.index('centers').addDocuments({
+      await meilisearch.index('centers').addDocuments([{
         id: center.id,
         type: 'center',
         name: center.name,
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
         locationLat: center.locationLat,
         locationLng: center.locationLng,
         createdAt: center.createdAt.toISOString()
-      })
+      }])
     } catch (error) {
       console.error('Error indexando en Meilisearch:', error)
     }

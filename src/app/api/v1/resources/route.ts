@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     })
     
     try {
-      await meilisearch.index('resources').addDocuments({
+      await meilisearch.index('resources').addDocuments([{
         id: resource.id,
         type: 'resource',
         category: resource.category,
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
         locationLat: resource.locationLat,
         locationLng: resource.locationLng,
         createdAt: resource.createdAt.toISOString()
-      })
+      }])
     } catch (error) {
       console.error('Error indexando en Meilisearch:', error)
     }

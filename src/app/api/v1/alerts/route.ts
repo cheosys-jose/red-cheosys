@@ -10,12 +10,13 @@ const meilisearch = new MeiliSearch({
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('📨 Recibiendo POST /api/v1/alerts')
     const body = await request.json()
+    console.log('📋 Body recibido:', JSON.stringify(body, null, 2))
     
-    // Validar con Zod
     const validatedData = alertSchema.parse(body)
+    console.log('✅ Datos validados:', validatedData)
     
-    // Crear en DB
     const alert = await prisma.alert.create({
       data: {
         ...validatedData,
@@ -24,10 +25,10 @@ export async function POST(request: NextRequest) {
         isActive: true
       }
     })
+    console.log('✅ Alert creada en DB:', alert.id)
     
-    // Indexar en Meilisearch
     try {
-      await meilisearch.index('alerts').addDocuments({
+      await meilisearch.index('alerts').addDocuments([{
         id: alert.id,
         type: 'alert',
         severity: alert.severity,
@@ -37,20 +38,24 @@ export async function POST(request: NextRequest) {
         locationLat: alert.locationLat,
         locationLng: alert.locationLng,
         createdAt: alert.createdAt.toISOString()
-      })
+      }])
+      console.log('✅ Indexada en Meilisearch')
     } catch (error) {
-      console.error('Error indexando en Meilisearch:', error)
+      console.error('❌ Error indexando en Meilisearch:', error)
     }
     
     return NextResponse.json(alert, { status: 201 })
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.name === 'ZodError') {
-        return NextResponse.json({ error: 'Datos inválidos', details: error }, { status: 400 })
-      }
+    console.error('❌ Error completo:', error)
+    console.error('❌ Tipo de error:', error instanceof Error ? error.name : 'Unknown')
+    console.error('❌ Mensaje:', error instanceof Error ? error.message : String(error))
+    if (error instanceof Error && error.name === 'ZodError') {
+      return NextResponse.json({ error: 'Datos inválidos', details: error }, { status: 400 })
     }
-    console.error('Error creating alert:', error)
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Error interno del servidor',
+      message: error instanceof Error ? error.message : String(error)
+    }, { status: 500 })
   }
 }
 

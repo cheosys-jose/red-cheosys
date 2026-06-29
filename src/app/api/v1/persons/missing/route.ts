@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     })
     
     try {
-      await meilisearch.index('missing_persons').addDocuments({
+      await meilisearch.index('missing_persons').addDocuments([{
         id: missingPerson.id,
         type: 'missing',
         fullName: missingPerson.fullName,
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
         locationLat: missingPerson.locationLat,
         locationLng: missingPerson.locationLng,
         createdAt: missingPerson.createdAt.toISOString()
-      })
+      }])
     } catch (error) {
       console.error('Error indexando en Meilisearch:', error)
     }
