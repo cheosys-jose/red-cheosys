@@ -4,24 +4,26 @@ import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import VisitCounter from '@/components/VisitCounter'
-import ImageLightbox from '@/components/ImageLightbox'
+import AlertCard from '@/components/AlertCard'
+import ResourceCard from '@/components/ResourceCard'
+import MissingPersonCard from '@/components/MissingPersonCard'
+import FoundPersonCard from '@/components/FoundPersonCard'
+import CenterCard from '@/components/CenterCard'
 
 function SearchResults() {
   const searchParams = useSearchParams()
   const query = searchParams.get('q') || ''
-  const tipo = searchParams.get('tipo') || ''
+  const type = searchParams.get('type') || ''
   const pageParam = searchParams.get('page') || '1'
-  const limitParam = searchParams.get('limit') || '10'
+  const limitParam = searchParams.get('limit') || '20'
 
   const [results, setResults] = useState<any>({ hits: [], estimatedTotalHits: 0, processingTimeMs: 0 })
   const [loading, setLoading] = useState(true)
   const [expandedCard, setExpandedCard] = useState<string | null>(null)
-  const [lightboxOpen, setLightboxOpen] = useState(false)
-  const [lightboxImages, setLightboxImages] = useState<string[]>([])
-  const [lightboxIndex, setLightboxIndex] = useState(0)
 
   const page = parseInt(pageParam)
   const limit = parseInt(limitParam)
+  const offset = (page - 1) * limit
   const totalPages = Math.ceil(results.estimatedTotalHits / limit)
 
   useEffect(() => {
@@ -30,10 +32,11 @@ function SearchResults() {
       try {
         const params = new URLSearchParams()
         if (query) params.set('q', query)
-        if (tipo) params.set('tipo', tipo)
+        if (type) params.set('type', type)
         params.set('limit', limit.toString())
+        params.set('offset', offset.toString())
 
-        const res = await fetch(`/api/search?${params.toString()}`)
+        const res = await fetch(`/api/v2/search?${params.toString()}`)
         const data = await res.json()
         setResults(data)
       } catch (error) {
@@ -43,65 +46,50 @@ function SearchResults() {
       }
     }
     fetchResults()
-  }, [query, tipo, limit])
+  }, [query, type, limit, offset])
 
   if (loading) {
     return <div className="text-center py-12">Buscando...</div>
-  }
-
-  const getTipoIcon = (tipo: string) => {
-    switch (tipo) {
-      case 'necesita': return '🚨'
-      case 'ofrece': return '🤝'
-      case 'desaparecido': return '👤'
-      case 'centro': return '📍'
-      default: return '📋'
-    }
-  }
-
-  const getTipoColor = (tipo: string) => {
-    switch (tipo) {
-      case 'necesita': return 'border-l-red-500 hover:bg-red-50'
-      case 'ofrece': return 'border-l-green-500 hover:bg-green-50'
-      case 'desaparecido': return 'border-l-yellow-500 hover:bg-yellow-50'
-      case 'centro': return 'border-l-blue-500 hover:bg-blue-50'
-      default: return 'border-l-gray-500 hover:bg-gray-50'
-    }
   }
 
   const toggleExpand = (id: string) => {
     setExpandedCard(expandedCard === id ? null : id)
   }
 
-  const openLightbox = (images: string[], index: number = 0) => {
-    setLightboxImages(images)
-    setLightboxIndex(index)
-    setLightboxOpen(true)
-  }
-
-  const closeLightbox = () => {
-    setLightboxOpen(false)
-  }
-
   const buildPageUrl = (pageNum: number) => {
     const params = new URLSearchParams()
     if (query) params.set('q', query)
-    if (tipo) params.set('tipo', tipo)
+    if (type) params.set('type', type)
     params.set('limit', limit.toString())
     params.set('page', pageNum.toString())
     return `/search?${params.toString()}`
   }
 
+  const renderCard = (hit: any) => {
+    const isExpanded = expandedCard === hit.id
+    const onToggle = () => toggleExpand(hit.id)
+
+    switch (hit.entityType) {
+      case 'alerts':
+        return <AlertCard key={hit.id} data={hit} expanded={isExpanded} onToggle={onToggle} />
+      case 'resources':
+        return <ResourceCard key={hit.id} data={hit} expanded={isExpanded} onToggle={onToggle} />
+      case 'missing_persons':
+        return <MissingPersonCard key={hit.id} data={hit} expanded={isExpanded} onToggle={onToggle} />
+      case 'found_persons':
+        return <FoundPersonCard key={hit.id} data={hit} expanded={isExpanded} onToggle={onToggle} />
+      case 'centers':
+        return <CenterCard key={hit.id} data={hit} expanded={isExpanded} onToggle={onToggle} />
+      default:
+        return null
+    }
+  }
+
   return (
     <>
       <VisitCounter />
-      <ImageLightbox 
-        images={lightboxImages}
-        isOpen={lightboxOpen}
-        onClose={closeLightbox}
-        initialIndex={lightboxIndex}
-      />
 
+      {/* Stats y controles */}
       <div className="bg-white rounded-lg p-4 shadow mb-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
@@ -109,7 +97,7 @@ function SearchResults() {
               {results.estimatedTotalHits} resultado(s)
             </p>
             <p className="text-sm text-gray-500">
-              Pagina {page} de {totalPages || 1} - {results.processingTimeMs}ms
+              Página {page} de {totalPages || 1}
             </p>
           </div>
 
@@ -120,140 +108,27 @@ function SearchResults() {
               onChange={(e) => {
                 const params = new URLSearchParams()
                 if (query) params.set('q', query)
-                if (tipo) params.set('tipo', tipo)
+                if (type) params.set('type', type)
                 params.set('limit', e.target.value)
                 window.location.href = `/search?${params.toString()}`
               }}
               className="border border-gray-300 rounded px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500"
             >
-              <option value="5">5</option>
               <option value="10">10</option>
               <option value="20">20</option>
               <option value="50">50</option>
+              <option value="100">100</option>
             </select>
           </div>
         </div>
       </div>
 
+      {/* Resultados */}
       <div className="space-y-3">
-        {results.hits.map((hit: any) => (
-          <article
-            key={hit.id}
-            className={`bg-white rounded-lg shadow hover:shadow-lg transition-all border-l-4 cursor-pointer ${getTipoColor(hit.tipo)}`}
-            onClick={() => toggleExpand(hit.id)}
-          >
-            <div className="p-4">
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{getTipoIcon(hit.tipo)}</span>
-                  <div>
-                    <h3 className="font-bold text-lg text-gray-900">
-                      {hit.nombre || hit.titulo || 'Sin titulo'}
-                    </h3>
-                    <p className="text-sm text-gray-600 line-clamp-2">
-                      {hit.descripcion}
-                    </p>
-                  </div>
-                </div>
-                <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
-                  hit.tipo === 'necesita' ? 'bg-red-600 text-white' :
-                  hit.tipo === 'ofrece' ? 'bg-green-600 text-white' :
-                  hit.tipo === 'desaparecido' ? 'bg-yellow-600 text-white' :
-                  'bg-blue-600 text-white'
-                }`}>
-                  {hit.tipo}
-                </span>
-              </div>
-
-              {expandedCard === hit.id && (
-                <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
-                  <p className="text-gray-700">{hit.descripcion}</p>
-
-                  {hit.imagenes && hit.imagenes.length > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
-                      {hit.imagenes.map((img: string, idx: number) => {
-                        const imageUrl = img.startsWith('/api/') ? img : `/api${img}`
-                        return (
-                          <div 
-                            key={idx}
-                            className="relative group cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              openLightbox(hit.imagenes.map((i: string) => i), idx)
-                            }}
-                          >
-                            <img
-                              src={imageUrl}
-                              alt={`Imagen ${idx + 1}`}
-                              className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 group-hover:border-blue-500 transition-all"
-                            />
-                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center rounded-lg">
-                              <span className="text-white opacity-0 group-hover:opacity-100 text-2xl font-bold">
-                                🔍
-                              </span>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-
-                  <div className="space-y-1 text-sm">
-                    {hit.texto_ubicacion && (
-                      <p><span className="font-semibold">📍</span> {hit.texto_ubicacion}</p>
-                    )}
-                    {hit.ciudad && (
-                      <p><span className="font-semibold">🏙️</span> {hit.ciudad}{hit.estado && `, ${hit.estado}`}</p>
-                    )}
-                    {hit.contacto && (
-                      <p><span className="font-semibold">📞</span> <a href={`tel:${hit.contacto}`} className="text-blue-600 hover:underline">{hit.contacto}</a></p>
-                    )}
-                    {hit.horario && (
-                      <p><span className="font-semibold">🕐</span> {hit.horario}</p>
-                    )}
-                    {hit.timestamp && (
-                      <p className="text-xs text-gray-500">
-                        ⏰ {new Date(hit.timestamp).toLocaleString('es-VE')}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Preview de imagen si hay */}
-              {hit.imagenes && hit.imagenes.length > 0 && expandedCard !== hit.id && (
-                <div className="mt-3">
-                  <div 
-                    className="relative cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      openLightbox(hit.imagenes.map((i: string) => i), 0)
-                    }}
-                  >
-                    <img
-                      src={hit.imagenes[0].startsWith('/api/') ? hit.imagenes[0] : `/api${hit.imagenes[0]}`}
-                      alt="Imagen principal"
-                      className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
-                    />
-                    <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all flex items-center justify-center rounded-lg">
-                      <span className="text-white opacity-0 hover:opacity-100 text-lg font-bold bg-black bg-opacity-50 px-3 py-1 rounded">
-                        Ver imagen ({hit.imagenes.length})
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-2 text-center">
-                <button className="text-xs text-blue-600 hover:text-blue-800 font-medium">
-                  {expandedCard === hit.id ? '▲ Mostrar menos' : '▼ Ver mas detalles'}
-                </button>
-              </div>
-            </div>
-          </article>
-        ))}
+        {results.hits.map((hit: any) => renderCard(hit))}
       </div>
 
+      {/* Paginación */}
       {totalPages > 1 && (
         <div className="flex justify-center items-center gap-2 mt-8">
           {page > 1 && (
@@ -299,10 +174,10 @@ function SearchResults() {
 
       {results.estimatedTotalHits === 0 && (
         <div className="mt-12 text-center bg-white rounded-xl shadow-md p-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-2">¿Tienes informacion que compartir?</h3>
-          <p className="text-gray-600 mb-4">Ayuda a otros agregando centros de acopio, necesidades o personas desaparecidas</p>
-          <Link href="/agregar" className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700">
-            Agregar Informacion
+          <h3 className="text-xl font-bold text-gray-900 mb-2">No se encontraron resultados</h3>
+          <p className="text-gray-600 mb-4">¿Tienes información que compartir?</p>
+          <Link href="/persons/missing" className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700">
+            Reportar Persona Extraviada
           </Link>
         </div>
       )}
@@ -316,8 +191,8 @@ export default function SearchPage() {
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <Link href="/" className="text-3xl font-bold text-gray-900 hover:text-blue-600">Red CheoSys</Link>
-          <Link href="/agregar" className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 shadow-lg">
-            + Agregar Informacion
+          <Link href="/persons/missing" className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 shadow-lg">
+            + Reportar
           </Link>
         </div>
 
@@ -326,7 +201,7 @@ export default function SearchPage() {
             <input
               type="search"
               name="q"
-              placeholder="Buscar por nombre, ubicacion, descripcion..."
+              placeholder="Buscar por nombre, ubicación, descripción..."
               className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             />
             <button type="submit" className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
@@ -338,10 +213,11 @@ export default function SearchPage() {
         <div className="mb-6 bg-white rounded-lg p-4 shadow">
           <div className="flex flex-wrap gap-2">
             <Link href="/search" className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white">Todos</Link>
-            <Link href="/search?tipo=necesita" className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">🚨 Necesita</Link>
-            <Link href="/search?tipo=ofrece" className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">🤝 Ofrece</Link>
-            <Link href="/search?tipo=desaparecido" className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">👤 Desaparecidos</Link>
-            <Link href="/search?tipo=centro" className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">📍 Centros</Link>
+            <Link href="/search?type=alerts" className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">🚨 Alertas</Link>
+            <Link href="/search?type=resources" className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">🤝 Recursos</Link>
+            <Link href="/search?type=missing_persons" className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">👤 Buscados</Link>
+            <Link href="/search?type=found_persons" className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">🤝 Encontrados</Link>
+            <Link href="/search?type=centers" className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">📍 Centros</Link>
           </div>
         </div>
 
