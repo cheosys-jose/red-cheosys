@@ -5,42 +5,77 @@ const client = new MeiliSearch({
   apiKey: process.env.MEILISEARCH_KEY || 'red-cheosys-2026-change-me'
 })
 
-export const index = client.index('records')
+const index = client.index('records')
 
-export async function indexRecord(record: any) {
+// Configurar atributos buscables al iniciar
+async function configureIndex() {
   try {
-    return await index.addDocuments([record])
+    await index.updateSearchableAttributes([
+      'titulo',
+      'descripcion',
+      'texto_ubicacion',
+      'ciudad',
+      'tags',
+      'nombre'
+    ])
+    
+    await index.updateFilterableAttributes([
+      'tipo',
+      'ciudad',
+      'estado',
+      'pais',
+      'prioridad',
+      'tags'
+    ])
+    
+    await index.updateSortableAttributes([
+      'timestamp',
+      'votos_confianza'
+    ])
+    
+    console.log('✅ Configuración de Meilisearch actualizada')
   } catch (error) {
-    console.error('Error indexando en Meilisearch:', error)
-    throw error
+    console.error('Error configurando Meilisearch:', error)
   }
 }
+
+// Ejecutar configuración al cargar
+configureIndex()
 
 export async function searchRecords(query: string, filters?: string[]) {
   try {
     const searchParams: any = {
-      limit: 20,
-      attributesToHighlight: ['titulo', 'descripcion'],
-      highlightPreTag: '<mark>',
-      highlightPostTag: '</mark>'
+      limit: 50,
     }
-    
+
+    if (query) {
+      searchParams.q = query
+    }
+
     if (filters && filters.length > 0) {
       searchParams.filter = filters
     }
-    
-    return await index.search(query, searchParams)
+
+    const results = await index.search(query, searchParams)
+    return results
   } catch (error) {
     console.error('Error buscando en Meilisearch:', error)
-    throw error
+    return { hits: [], estimatedTotalHits: 0, processingTimeMs: 0 }
+  }
+}
+
+export async function indexRecord(record: any) {
+  try {
+    await index.addDocuments([record])
+  } catch (error) {
+    console.error('Error indexando en Meilisearch:', error)
   }
 }
 
 export async function deleteRecord(id: string) {
   try {
-    return await index.deleteDocument(id)
+    await index.deleteDocument(id)
   } catch (error) {
     console.error('Error eliminando de Meilisearch:', error)
-    throw error
   }
 }
