@@ -49,3 +49,5 @@ meilisearch
 
 # Logs
 *.log
+
+/src/generated/prisma

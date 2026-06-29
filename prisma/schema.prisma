@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Alert {
+  id                    String   @id @default(uuid())
+  sourceType            String   @default("INTERNAL")
+  sourceUrl             String?
+  verificationStatus    String   @default("UNVERIFIED")
+  locationLat           Float?
+  locationLng           Float?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  severity              String
+  alertType             String
+  affectedPeople        String?
+  exactLocation         String
+  reporterContact       String?
+  isActive              Boolean  @default(true)
+  description           String
+
+  images                Image[]
+
+  @@index([severity, alertType])
+  @@index([locationLat, locationLng])
+  @@index([createdAt])
+}
+
+model Resource {
+  id                    String   @id @default(uuid())
+  sourceType            String   @default("INTERNAL")
+  sourceUrl             String?
+  verificationStatus    String   @default("UNVERIFIED")
+  locationLat           Float?
+  locationLng           Float?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  category              String
+  coverageArea          String
+  availability          String
+  status                String   @default("AVAILABLE")
+  providerContact       String
+  description           String
+
+  images                Image[]
+
+  @@index([category, status])
+  @@index([createdAt])
+}
+
+model MissingPerson {
+  id                    String   @id @default(uuid())
+  sourceType            String   @default("INTERNAL")
+  sourceUrl             String?
+  verificationStatus    String   @default("UNVERIFIED")
+  locationLat           Float?
+  locationLng           Float?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  fullName              String
+  alias                 String?
+  ageGroup              String
+  gender                String
+  lastSeenLocation      String
+  clothingDescription   String?
+  distinctiveFeatures   String?
+  relativeContact       String
+  additionalInfo        String?
+
+  images                Image[]
+
+  @@index([fullName, ageGroup, gender])
+  @@index([lastSeenLocation])
+  @@index([createdAt])
+}
+
+model FoundPerson {
+  id                    String   @id @default(uuid())
+  sourceType            String   @default("INTERNAL")
+  sourceUrl             String?
+  verificationStatus    String   @default("UNVERIFIED")
+  locationLat           Float?
+  locationLng           Float?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  condition             String
+  declaredName          String?
+  currentSafeLocation   String
+  estimatedAgeGroup     String
+  estimatedGender       String
+  clothingDescription   String?
+  custodianContact      String
+  additionalInfo        String?
+
+  images                Image[]
+
+  @@index([condition, currentSafeLocation])
+  @@index([estimatedAgeGroup, estimatedGender])
+  @@index([createdAt])
+}
+
+model Center {
+  id                    String   @id @default(uuid())
+  sourceType            String   @default("INTERNAL")
+  sourceUrl             String?
+  verificationStatus    String   @default("UNVERIFIED")
+  locationLat           Float?
+  locationLng           Float?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  centerType            String
+  name                  String
+  address               String
+  capacityStatus        String   @default("RECEIVING")
+  criticalNeeds         String?
+  contactPhone          String
+  description           String?
+
+  images                Image[]
+
+  @@index([centerType, capacityStatus])
+  @@index([locationLat, locationLng])
+  @@index([createdAt])
+}
+
+model Image {
+  id                    String   @id @default(uuid())
+  url                   String
+  alt                   String?
+  createdAt             DateTime @default(now())
+
+  alertId               String?
+  resourceId            String?
+  missingPersonId       String?
+  foundPersonId         String?
+  centerId              String?
+
+  alert                 Alert?          @relation(fields: [alertId], references: [id])
+  resource              Resource?       @relation(fields: [resourceId], references: [id])
+  missingPerson         MissingPerson?  @relation(fields: [missingPersonId], references: [id])
+  foundPerson           FoundPerson?    @relation(fields: [foundPersonId], references: [id])
+  center                Center?         @relation(fields: [centerId], references: [id])
+}
