@@ -17,17 +17,23 @@ model Alert {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  severity              String
-  alertType             String
+  // Tipo de evento/catastrófe (opcional temporalmente)
+  eventType             String   @default("other") // earthquake, flood, hurricane, etc.
+
+  // Tipo de alerta (qué se necesita)
+  alertType             String   @default("other") // trapped_persons, medical_emergency, etc.
+
+  severity              String   @default("SUPPORT")
   affectedPeople        String?
   exactLocation         String
   reporterContact       String?
-  isActive              Boolean  @default(true)
   description           String
+  isActive              Boolean  @default(true)
 
   images                Image[]
 
-  @@index([severity, alertType])
+  @@index([eventType, severity])
+  @@index([alertType, severity])
   @@index([locationLat, locationLng])
   @@index([createdAt])
 }
@@ -133,10 +139,40 @@ model Center {
   @@index([createdAt])
 }
 
+model ExternalLink {
+  id               String   @id @default(uuid())
+  title            String
+  url              String
+  description      String
+  category         String   @default("news") // official, missing, centers, news
+  status           String   @default("pending") // pending, approved, rejected
+  verified         Boolean  @default(false)
+  
+  submitterName    String?
+  submitterEmail   String?
+  
+  reviewedBy       String?
+  reviewedAt       DateTime?
+  rejectionReason  String?
+  
+  upvotes          Int      @default(0)
+  downvotes        Int      @default(0)
+  clickCount       Int      @default(0)
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([category, status])
+  @@index([createdAt])
+}
+
 model Image {
   id                    String   @id @default(uuid())
   url                   String
   alt                   String?
+  width                 Int?
+  height                Int?
+  fileSize              Int?
   createdAt             DateTime @default(now())
 
   alertId               String?
