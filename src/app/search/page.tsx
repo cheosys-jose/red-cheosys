@@ -28,7 +28,7 @@ function SearchResults() {
         if (query) params.set('q', query)
         if (tipo) params.set('tipo', tipo)
         params.set('limit', limit.toString())
-        
+
         const res = await fetch(`/api/search?${params.toString()}`)
         const data = await res.json()
         setResults(data)
@@ -69,12 +69,19 @@ function SearchResults() {
     setExpandedCard(expandedCard === id ? null : id)
   }
 
+  const buildPageUrl = (pageNum: number) => {
+    const params = new URLSearchParams()
+    if (query) params.set('q', query)
+    if (tipo) params.set('tipo', tipo)
+    params.set('limit', limit.toString())
+    params.set('page', pageNum.toString())
+    return `/search?${params.toString()}`
+  }
+
   return (
     <>
-      {/* Contador de visitas */}
       <VisitCounter />
 
-      {/* Stats y controles */}
       <div className="bg-white rounded-lg p-4 shadow mb-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
@@ -82,19 +89,19 @@ function SearchResults() {
               {results.estimatedTotalHits} resultado(s)
             </p>
             <p className="text-sm text-gray-500">
-              Página {page} de {totalPages || 1} • {results.processingTimeMs}ms
+              Pagina {page} de {totalPages || 1} - {results.processingTimeMs}ms
             </p>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-600">Mostrar:</label>
-            <select 
+            <select
               value={limit}
               onChange={(e) => {
-                const newLimit = e.target.value
-                const params = new URLSearchParams(window.location.search)
-                params.set('limit', newLimit)
-                params.delete('page')
+                const params = new URLSearchParams()
+                if (query) params.set('q', query)
+                if (tipo) params.set('tipo', tipo)
+                params.set('limit', e.target.value)
                 window.location.href = `/search?${params.toString()}`
               }}
               className="border border-gray-300 rounded px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500"
@@ -108,22 +115,20 @@ function SearchResults() {
         </div>
       </div>
 
-      {/* Resultados */}
       <div className="space-y-3">
         {results.hits.map((hit: any) => (
-          <article 
-            key={hit.id} 
+          <article
+            key={hit.id}
             className={`bg-white rounded-lg shadow hover:shadow-lg transition-all border-l-4 cursor-pointer ${getTipoColor(hit.tipo)}`}
             onClick={() => toggleExpand(hit.id)}
           >
             <div className="p-4">
-              {/* Header compacto */}
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{getTipoIcon(hit.tipo)}</span>
                   <div>
                     <h3 className="font-bold text-lg text-gray-900">
-                      {hit.nombre || hit.titulo || 'Sin título'}
+                      {hit.nombre || hit.titulo || 'Sin titulo'}
                     </h3>
                     <p className="text-sm text-gray-600 line-clamp-2">
                       {hit.descripcion}
@@ -140,11 +145,10 @@ function SearchResults() {
                 </span>
               </div>
 
-              {/* Detalles expandidos */}
               {expandedCard === hit.id && (
                 <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
                   <p className="text-gray-700">{hit.descripcion}</p>
-                  
+
                   {hit.imagenes && hit.imagenes.length > 0 && (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-3">
                       {hit.imagenes.map((img: string, idx: number) => {
@@ -183,10 +187,9 @@ function SearchResults() {
                 </div>
               )}
 
-              {/* Indicador de expandir */}
               <div className="mt-2 text-center">
                 <button className="text-xs text-blue-600 hover:text-blue-800 font-medium">
-                  {expandedCard === hit.id ? '▲ Mostrar menos' : '▼ Ver más detalles'}
+                  {expandedCard === hit.id ? '▲ Mostrar menos' : '▼ Ver mas detalles'}
                 </button>
               </div>
             </div>
@@ -194,18 +197,14 @@ function SearchResults() {
         ))}
       </div>
 
-      {/* Paginación */}
       {totalPages > 1 && (
         <div className="flex justify-center items-center gap-2 mt-8">
           {page > 1 && (
-            <Link 
-              href={`/search?${new URLSearchParams({ q, tipo, limit: limit.toString(), page: (page - 1).toString() }).toString()}`}
-              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded text-sm font-medium"
-            >
+            <Link href={buildPageUrl(page - 1)} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded text-sm font-medium">
               ← Anterior
             </Link>
           )}
-          
+
           <div className="flex gap-1">
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
               let pageNum
@@ -218,15 +217,13 @@ function SearchResults() {
               } else {
                 pageNum = page - 2 + i
               }
-              
+
               return (
                 <Link
                   key={pageNum}
-                  href={`/search?${new URLSearchParams({ q, tipo, limit: limit.toString(), page: pageNum.toString() }).toString()}`}
+                  href={buildPageUrl(pageNum)}
                   className={`px-4 py-2 rounded text-sm font-medium ${
-                    page === pageNum 
-                      ? 'bg-blue-600 text-white' 
-                      : 'bg-gray-200 hover:bg-gray-300'
+                    page === pageNum ? 'bg-blue-600 text-white' : 'bg-gray-200 hover:bg-gray-300'
                   }`}
                 >
                   {pageNum}
@@ -236,10 +233,7 @@ function SearchResults() {
           </div>
 
           {page < totalPages && (
-            <Link 
-              href={`/search?${new URLSearchParams({ q, tipo, limit: limit.toString(), page: (page + 1).toString() }).toString()}`}
-              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded text-sm font-medium"
-            >
+            <Link href={buildPageUrl(page + 1)} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded text-sm font-medium">
               Siguiente →
             </Link>
           )}
@@ -248,10 +242,10 @@ function SearchResults() {
 
       {results.estimatedTotalHits === 0 && (
         <div className="mt-12 text-center bg-white rounded-xl shadow-md p-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-2">¿Tienes información que compartir?</h3>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">¿Tienes informacion que compartir?</h3>
           <p className="text-gray-600 mb-4">Ayuda a otros agregando centros de acopio, necesidades o personas desaparecidas</p>
           <Link href="/agregar" className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700">
-            Agregar Información
+            Agregar Informacion
           </Link>
         </div>
       )}
@@ -266,17 +260,17 @@ export default function SearchPage() {
         <div className="flex justify-between items-center mb-6">
           <Link href="/" className="text-3xl font-bold text-gray-900 hover:text-blue-600">Red CheoSys</Link>
           <Link href="/agregar" className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 shadow-lg">
-            + Agregar Información
+            + Agregar Informacion
           </Link>
         </div>
 
         <div className="mb-6">
           <form action="/search" method="GET" className="flex gap-2">
-            <input 
-              type="search" 
-              name="q" 
-              placeholder="Buscar por nombre, ubicación, descripción..."
-              className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
+            <input
+              type="search"
+              name="q"
+              placeholder="Buscar por nombre, ubicacion, descripcion..."
+              className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             />
             <button type="submit" className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
               Buscar
