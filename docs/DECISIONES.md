@@ -6,42 +6,41 @@
 
 ### Frontend
 - **Next.js 14** - SSR/ISR, App Router
-- **HTMX** - Interacciones sin JS pesado (14KB)
-- **Alpine.js** - Solo lo necesario (15KB)
+- **React 18** - UI interactiva
+- **TypeScript** - Type safety
 - **Tailwind CSS** - Utility-first, purged
-- **Leaflet.js** - Mapas ligeros (open source)
 
 ### Backend
 - **Meilisearch** - Búsqueda instantánea (Rust, <100MB RAM)
-- **SQLite** - Datos crudos (zero deps)
-- **Nominatim** - Geocodificación OpenStreetMap (gratis)
+- **Sharp.js** - Procesamiento de imágenes (optimización WebP)
+- **OpenStreetMap/Nominatim** - Geocodificación (gratis, open source)
 
 ### Infraestructura
-- **Nginx** - Reverse proxy + Brotli compression
+- **Nginx** - Reverse proxy + SSL
 - **PM2** - Process manager
-- **Certbot** - SSL automático
+- **Certbot** - SSL automático (Let's Encrypt)
 
 ## ¿Por qué estas decisiones?
 
 ### Meilisearch vs Elasticsearch
-- ✅ Meilisearch: <100MB RAM, typo-tolerant, más simple
-- ❌ Elasticsearch: >1GB RAM, complejo, overkill
+- ✅ Meilisearch: <100MB RAM, typo-tolerant, más simple, búsqueda <10ms
+- ❌ Elasticsearch: >1GB RAM, complejo, overkill para este caso
 
-### SQLite vs PostgreSQL
-- ✅ SQLite: Zero config, portable, <10MB, perfecto para <100k records
-- ❌ PostgreSQL: Requiere servidor, más complejo
-
-### HTMX vs React
-- ✅ HTMX: 14KB, HTML-first, sin build step
-- ❌ React: 200KB+, complejo, overkill para este caso
+### Sharp.js vs ImageMagick
+- ✅ Sharp: Node.js nativo, rápido, optimización WebP automática
+- ❌ ImageMagick: Requiere CLI, más lento, menos integración
 
 ### Nominatim vs Google Maps
-- ✅ Nominatim: Gratis, open source, sin API key
-- ❌ Google Maps: Requiere API key, costo si crece
+- ✅ Nominatim: Gratis, open source, sin API key, sin límites
+- ❌ Google Maps: Requiere API key, costo si crece, dependencias
 
-### Leaflet vs Mapbox
-- ✅ Leaflet: 39KB, open source, plugins
-- ❌ Mapbox: Requiere token, costo si crece
+### Next.js vs HTMX
+- ✅ Next.js: SSR/ISR, mejor SEO, React ecosystem
+- ❌ HTMX: Más simple pero menos flexibilidad para UI compleja
+
+### JSON por día vs SQLite
+- ✅ JSON: Simple, portable, fácil backup, suficiente para <100k registros
+- ⚠️ Considerar SQLite si crece a >100k registros
 
 ## Principios de Diseño
 
@@ -57,6 +56,7 @@
 - Menos features que soluciones comerciales
 - UI más simple (pero funcional)
 - Escalamiento manual hasta cierto punto
+- Imágenes optimizadas (800x800px) para reducir ancho de banda
 
 ### ❌ No aceptamos
 - Dependencias de servicios pagos
@@ -64,37 +64,31 @@
 - Complejidad innecesaria
 - Datos privados (todo es público)
 
-## Migración desde v0.1.0
+## Arquitectura de Imágenes
 
-### Qué mantener
-- ✅ Estructura Next.js 14
-- ✅ TypeScript
-- ✅ Tailwind CSS
-- ✅ API routes (/api/submit, /api/centers)
+### Flujo de Upload
+1. Usuario sube imagen (máx 2MB)
+2. Sharp.js procesa: resize 800x800px + WebP calidad 70%
+3. Guardado en `data/images/YYYY-MM/nombre-hash.webp`
+4. URL relativa: `/images/YYYY-MM/nombre-hash.webp`
+5. Middleware sirve desde `/api/images/[...path]`
 
-### Qué cambiar
-- 🔄 React → HTMX + Alpine.js (progresivo)
-- 🔄 JSON files → SQLite + Meilisearch
-- 🔄 Google Maps → OpenStreetMap/Nominatim
-- 🔄 Multi-step form → Búsqueda instantánea
-
-### Qué agregar
-- ➕ Meilisearch
-- ➕ SQLite
-- ➕ PWA + Service Worker
-- ➕ HTMX
-- ➕ Leaflet
+### Optimización
+- **Formato:** WebP (50-80% más pequeño que JPEG)
+- **Tamaño:** 800x800px máximo (suficiente para visualización)
+- **Calidad:** 70% (balance calidad/tamaño)
+- **Cache:** 1 año en navegador (immutable)
 
 ## Costos Estimados
 
 ### Mensuales
-- Servidor (Contabo): $10
+- Servidor: $10-15 (VPS básico)
 - Dominio: $1.25 (prorrateado)
 - SSL: $0 (Let's Encrypt)
-- **Total: ~$11.25/mes**
+- **Total: ~$11-16/mes**
 
 ### Anuales
-- **Total: ~$135/año**
+- **Total: ~$135-190/año**
 
 ### Sostenibilidad
 - Donaciones cripto (USDT TRC20/ERC20, Bitcoin)

@@ -13,7 +13,7 @@ Migración **incremental** sin romper funcionalidad existente.
 ```bash
 # En el servidor
 curl -L https://install.meilisearch.com | sh
-./meilisearch --master-key=red-cheosys-2026-change-me --db-path /opt/cheosys/services/web/red-cheosys/data/meilisearch
+./meilisearch --master-key=TU_MASTER_KEY_AQUI --db-path /ruta/a/tu/proyecto/data/meilisearch
 ```
 
 ### 1.2 Configurar como servicio systemd
@@ -29,9 +29,9 @@ After=network.target
 
 [Service]
 Type=simple
-User=cheo-admin-core
-WorkingDirectory=/opt/cheosys/services/web/red-cheosys
-ExecStart=/home/cheo-admin-core/meilisearch --master-key=red-cheosys-2026-change-me --db-path /opt/cheosys/services/web/red-cheosys/data/meilisearch
+User=TU_USUARIO
+WorkingDirectory=/ruta/a/tu/proyecto
+ExecStart=/home/TU_USUARIO/meilisearch --master-key=TU_MASTER_KEY_AQUI --db-path /ruta/a/tu/proyecto/data/meilisearch
 Restart=on-failure
 RestartSec=5
 
@@ -55,7 +55,7 @@ curl http://localhost:7700/health
 ```bash
 # Usar Postman o curl
 curl -X POST 'http://localhost:7700/indexes' \
-  -H 'Authorization: Bearer red-cheosys-2026-change-me' \
+  -H 'Authorization: Bearer TU_MASTER_KEY_AQUI' \
   -H 'Content-Type: application/json' \
   --data-binary '{ "uid": "records", "primaryKey": "id" }'
 ```
@@ -69,7 +69,7 @@ sudo apt-get install sqlite3 libsqlite3-dev
 
 ### 2.2 Crear schema
 ```bash
-sqlite3 /opt/cheosys/services/web/red-cheosys/data/red-cheosys.db << 'SQL'
+sqlite3 /ruta/a/tu/proyecto/data/red-cheosys.db << 'SQL'
 CREATE TABLE IF NOT EXISTS records (
   id TEXT PRIMARY KEY,
   tipo TEXT NOT NULL,
@@ -122,7 +122,7 @@ import { MeiliSearch } from 'meilisearch'
 
 const client = new MeiliSearch({
   host: process.env.MEILISEARCH_URL || 'http://localhost:7700',
-  apiKey: process.env.MEILISEARCH_KEY || 'red-cheosys-2026-change-me'
+  apiKey: process.env.MEILISEARCH_KEY || 'TU_MASTER_KEY_AQUI'
 })
 
 export const index = client.index('records')
