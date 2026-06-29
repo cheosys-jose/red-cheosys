@@ -3,14 +3,22 @@
 import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import VisitCounter from '@/components/VisitCounter'
 
 function SearchResults() {
   const searchParams = useSearchParams()
   const query = searchParams.get('q') || ''
   const tipo = searchParams.get('tipo') || ''
+  const pageParam = searchParams.get('page') || '1'
+  const limitParam = searchParams.get('limit') || '10'
 
   const [results, setResults] = useState<any>({ hits: [], estimatedTotalHits: 0, processingTimeMs: 0 })
   const [loading, setLoading] = useState(true)
+  const [expandedCard, setExpandedCard] = useState<string | null>(null)
+
+  const page = parseInt(pageParam)
+  const limit = parseInt(limitParam)
+  const totalPages = Math.ceil(results.estimatedTotalHits / limit)
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -19,7 +27,8 @@ function SearchResults() {
         const params = new URLSearchParams()
         if (query) params.set('q', query)
         if (tipo) params.set('tipo', tipo)
-
+        params.set('limit', limit.toString())
+        
         const res = await fetch(`/api/search?${params.toString()}`)
         const data = await res.json()
         setResults(data)
@@ -30,7 +39,7 @@ function SearchResults() {
       }
     }
     fetchResults()
-  }, [query, tipo])
+  }, [query, tipo, limit])
 
   if (loading) {
     return <div className="text-center py-12">Buscando...</div>
@@ -48,159 +57,194 @@ function SearchResults() {
 
   const getTipoColor = (tipo: string) => {
     switch (tipo) {
-      case 'necesita': return 'border-l-red-500 bg-red-50'
-      case 'ofrece': return 'border-l-green-500 bg-green-50'
-      case 'desaparecido': return 'border-l-yellow-500 bg-yellow-50'
-      case 'centro': return 'border-l-blue-500 bg-blue-50'
-      default: return 'border-l-gray-500 bg-gray-50'
+      case 'necesita': return 'border-l-red-500 hover:bg-red-50'
+      case 'ofrece': return 'border-l-green-500 hover:bg-green-50'
+      case 'desaparecido': return 'border-l-yellow-500 hover:bg-yellow-50'
+      case 'centro': return 'border-l-blue-500 hover:bg-blue-50'
+      default: return 'border-l-gray-500 hover:bg-gray-50'
     }
+  }
+
+  const toggleExpand = (id: string) => {
+    setExpandedCard(expandedCard === id ? null : id)
   }
 
   return (
     <>
-      <div className="mb-4 text-sm text-gray-600">
-        {results.estimatedTotalHits > 0 ? (
-          <p><strong>{results.estimatedTotalHits}</strong> resultado(s) en {results.processingTimeMs}ms</p>
-        ) : (
-          <p>No se encontraron resultados</p>
-        )}
+      {/* Contador de visitas */}
+      <VisitCounter />
+
+      {/* Stats y controles */}
+      <div className="bg-white rounded-lg p-4 shadow mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <p className="text-lg font-bold text-gray-900">
+              {results.estimatedTotalHits} resultado(s)
+            </p>
+            <p className="text-sm text-gray-500">
+              Página {page} de {totalPages || 1} • {results.processingTimeMs}ms
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600">Mostrar:</label>
+            <select 
+              value={limit}
+              onChange={(e) => {
+                const newLimit = e.target.value
+                const params = new URLSearchParams(window.location.search)
+                params.set('limit', newLimit)
+                params.delete('page')
+                window.location.href = `/search?${params.toString()}`
+              }}
+              className="border border-gray-300 rounded px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+            </select>
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-4">
+      {/* Resultados */}
+      <div className="space-y-3">
         {results.hits.map((hit: any) => (
           <article 
             key={hit.id} 
-            className={`bg-white rounded-xl shadow-md hover:shadow-xl transition-all border-l-4 ${getTipoColor(hit.tipo)}`}
+            className={`bg-white rounded-lg shadow hover:shadow-lg transition-all border-l-4 cursor-pointer ${getTipoColor(hit.tipo)}`}
+            onClick={() => toggleExpand(hit.id)}
           >
-            <div className="p-6">
-              {/* Header con tipo y fecha */}
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-3xl">{getTipoIcon(hit.tipo)}</span>
+            <div className="p-4">
+              {/* Header compacto */}
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{getTipoIcon(hit.tipo)}</span>
                   <div>
-                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                      hit.tipo === 'necesita' ? 'bg-red-600 text-white' :
-                      hit.tipo === 'ofrece' ? 'bg-green-600 text-white' :
-                      hit.tipo === 'desaparecido' ? 'bg-yellow-600 text-white' :
-                      'bg-blue-600 text-white'
-                    }`}>
-                      {hit.tipo}
-                    </span>
+                    <h3 className="font-bold text-lg text-gray-900">
+                      {hit.nombre || hit.titulo || 'Sin título'}
+                    </h3>
+                    <p className="text-sm text-gray-600 line-clamp-2">
+                      {hit.descripcion}
+                    </p>
+                  </div>
+                </div>
+                <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
+                  hit.tipo === 'necesita' ? 'bg-red-600 text-white' :
+                  hit.tipo === 'ofrece' ? 'bg-green-600 text-white' :
+                  hit.tipo === 'desaparecido' ? 'bg-yellow-600 text-white' :
+                  'bg-blue-600 text-white'
+                }`}>
+                  {hit.tipo}
+                </span>
+              </div>
+
+              {/* Detalles expandidos */}
+              {expandedCard === hit.id && (
+                <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
+                  <p className="text-gray-700">{hit.descripcion}</p>
+                  
+                  {hit.imagenes && hit.imagenes.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-3">
+                      {hit.imagenes.map((img: string, idx: number) => {
+                        const imageUrl = img.startsWith('/api/') ? img : `/api${img}`
+                        return (
+                          <img
+                            key={idx}
+                            src={imageUrl}
+                            alt={`Imagen ${idx + 1}`}
+                            className="w-full h-32 object-cover rounded"
+                          />
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  <div className="space-y-1 text-sm">
+                    {hit.texto_ubicacion && (
+                      <p><span className="font-semibold">📍</span> {hit.texto_ubicacion}</p>
+                    )}
+                    {hit.ciudad && (
+                      <p><span className="font-semibold">🏙️</span> {hit.ciudad}{hit.estado && `, ${hit.estado}`}</p>
+                    )}
+                    {hit.contacto && (
+                      <p><span className="font-semibold">📞</span> <a href={`tel:${hit.contacto}`} className="text-blue-600 hover:underline">{hit.contacto}</a></p>
+                    )}
+                    {hit.horario && (
+                      <p><span className="font-semibold">🕐</span> {hit.horario}</p>
+                    )}
                     {hit.timestamp && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        {new Date(hit.timestamp).toLocaleDateString('es-VE', { 
-                          day: '2-digit', 
-                          month: 'long', 
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                      <p className="text-xs text-gray-500">
+                        ⏰ {new Date(hit.timestamp).toLocaleString('es-VE')}
                       </p>
                     )}
                   </div>
                 </div>
-              </div>
-
-              {/* Nombre/Título principal */}
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {hit.nombre || hit.titulo || 'Sin título'}
-              </h2>
-
-              {/* Descripción */}
-              <p className="text-gray-700 mb-4 leading-relaxed">
-                {hit.descripcion}
-              </p>
-
-              {/* Imágenes */}
-              {hit.imagenes && hit.imagenes.length > 0 && (
-                <div className="mb-4 grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {hit.imagenes.map((img: string, idx: number) => {
-                    const imageUrl = img.startsWith('/api/') ? img : `/api${img}`
-                    return (
-                      <img
-                        key={idx}
-                        src={imageUrl}
-                        alt={`Imagen ${idx + 1}`}
-                        className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors cursor-pointer"
-                        onError={(e) => {
-                          console.error('Error cargando imagen:', imageUrl)
-                          ;(e.target as HTMLImageElement).style.display = 'none'
-                        }}
-                      />
-                    )
-                  })}
-                </div>
               )}
 
-              {/* Información de contacto y ubicación */}
-              <div className="space-y-2 pt-4 border-t border-gray-200">
-                {hit.texto_ubicacion && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-xl">📍</span>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-700">Ubicación</p>
-                      <p className="text-sm text-gray-600">{hit.texto_ubicacion}</p>
-                    </div>
-                  </div>
-                )}
-
-                {hit.ciudad && hit.ciudad !== hit.texto_ubicacion && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-xl">🏙️</span>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-700">Ciudad</p>
-                      <p className="text-sm text-gray-600">
-                        {hit.ciudad}
-                        {hit.estado && `, ${hit.estado}`}
-                        {hit.pais && `, ${hit.pais}`}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {hit.contacto && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-xl">📞</span>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-700">Contacto</p>
-                      <a 
-                        href={`tel:${hit.contacto}`} 
-                        className="text-sm text-blue-600 hover:underline font-medium"
-                      >
-                        {hit.contacto}
-                      </a>
-                    </div>
-                  </div>
-                )}
-
-                {hit.horario && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-xl">🕐</span>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-700">Horario</p>
-                      <p className="text-sm text-gray-600">{hit.horario}</p>
-                    </div>
-                  </div>
-                )}
+              {/* Indicador de expandir */}
+              <div className="mt-2 text-center">
+                <button className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                  {expandedCard === hit.id ? '▲ Mostrar menos' : '▼ Ver más detalles'}
+                </button>
               </div>
-
-              {/* Tags */}
-              {hit.tags && hit.tags.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {hit.tags.map((tag: string, idx: number) => (
-                    <span 
-                      key={idx} 
-                      className="px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-xs font-medium"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
           </article>
         ))}
       </div>
+
+      {/* Paginación */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-8">
+          {page > 1 && (
+            <Link 
+              href={`/search?${new URLSearchParams({ q, tipo, limit: limit.toString(), page: (page - 1).toString() }).toString()}`}
+              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded text-sm font-medium"
+            >
+              ← Anterior
+            </Link>
+          )}
+          
+          <div className="flex gap-1">
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum
+              if (totalPages <= 5) {
+                pageNum = i + 1
+              } else if (page <= 3) {
+                pageNum = i + 1
+              } else if (page >= totalPages - 2) {
+                pageNum = totalPages - 4 + i
+              } else {
+                pageNum = page - 2 + i
+              }
+              
+              return (
+                <Link
+                  key={pageNum}
+                  href={`/search?${new URLSearchParams({ q, tipo, limit: limit.toString(), page: pageNum.toString() }).toString()}`}
+                  className={`px-4 py-2 rounded text-sm font-medium ${
+                    page === pageNum 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-200 hover:bg-gray-300'
+                  }`}
+                >
+                  {pageNum}
+                </Link>
+              )
+            })}
+          </div>
+
+          {page < totalPages && (
+            <Link 
+              href={`/search?${new URLSearchParams({ q, tipo, limit: limit.toString(), page: (page + 1).toString() }).toString()}`}
+              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded text-sm font-medium"
+            >
+              Siguiente →
+            </Link>
+          )}
+        </div>
+      )}
 
       {results.estimatedTotalHits === 0 && (
         <div className="mt-12 text-center bg-white rounded-xl shadow-md p-8">
