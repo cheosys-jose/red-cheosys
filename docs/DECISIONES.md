@@ -79,17 +79,3 @@
 - **Calidad:** 70% (balance calidad/tamaño)
 - **Cache:** 1 año en navegador (immutable)
 
-## Costos Estimados
-
-### Mensuales
-- Servidor: $10-15 (VPS básico)
-- Dominio: $1.25 (prorrateado)
-- SSL: $0 (Let's Encrypt)
-- **Total: ~$11-16/mes**
-
-### Anuales
-- **Total: ~$135-190/año**
-
-### Sostenibilidad
-- Donaciones cripto (USDT TRC20/ERC20, Bitcoin)
-- Transparencia total de costos
