@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { MeiliSearch } from 'meilisearch'
 
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,10 +22,17 @@ export async function GET(request: NextRequest) {
 
     const results = await index.search(q, {
       limit: 50,
-      filter: filters.length > 0 ? filters : undefined
+      filter: filters.length > 0 ? filters : undefined,
+      sort: ['timestamp:desc']
     })
 
-    return NextResponse.json(results)
+    return NextResponse.json(results, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
+    })
   } catch (error) {
     console.error('Error en búsqueda:', error)
     return NextResponse.json({ hits: [], estimatedTotalHits: 0, processingTimeMs: 0 })
