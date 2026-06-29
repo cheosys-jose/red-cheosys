@@ -176,7 +176,7 @@ function SearchResults() {
         <div className="mt-12 text-center bg-white rounded-xl shadow-md p-8">
           <h3 className="text-xl font-bold text-gray-900 mb-2">No se encontraron resultados</h3>
           <p className="text-gray-600 mb-4">¿Tienes información que compartir?</p>
-          <Link href="/persons/missing" className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700">
+          <Link href="/agregar" className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700">
             Reportar Persona Extraviada
           </Link>
         </div>
@@ -191,7 +191,7 @@ export default function SearchPage() {
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <Link href="/" className="text-3xl font-bold text-gray-900 hover:text-blue-600">Red CheoSys</Link>
-          <Link href="/persons/missing" className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 shadow-lg">
+          <Link href="/agregar" className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 shadow-lg">
             + Reportar
           </Link>
         </div>
