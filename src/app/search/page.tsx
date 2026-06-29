@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import VisitCounter from '@/components/VisitCounter'
+import ImageLightbox from '@/components/ImageLightbox'
 
 function SearchResults() {
   const searchParams = useSearchParams()
@@ -15,6 +16,9 @@ function SearchResults() {
   const [results, setResults] = useState<any>({ hits: [], estimatedTotalHits: 0, processingTimeMs: 0 })
   const [loading, setLoading] = useState(true)
   const [expandedCard, setExpandedCard] = useState<string | null>(null)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxImages, setLightboxImages] = useState<string[]>([])
+  const [lightboxIndex, setLightboxIndex] = useState(0)
 
   const page = parseInt(pageParam)
   const limit = parseInt(limitParam)
@@ -69,6 +73,16 @@ function SearchResults() {
     setExpandedCard(expandedCard === id ? null : id)
   }
 
+  const openLightbox = (images: string[], index: number = 0) => {
+    setLightboxImages(images)
+    setLightboxIndex(index)
+    setLightboxOpen(true)
+  }
+
+  const closeLightbox = () => {
+    setLightboxOpen(false)
+  }
+
   const buildPageUrl = (pageNum: number) => {
     const params = new URLSearchParams()
     if (query) params.set('q', query)
@@ -81,6 +95,12 @@ function SearchResults() {
   return (
     <>
       <VisitCounter />
+      <ImageLightbox 
+        images={lightboxImages}
+        isOpen={lightboxOpen}
+        onClose={closeLightbox}
+        initialIndex={lightboxIndex}
+      />
 
       <div className="bg-white rounded-lg p-4 shadow mb-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -150,16 +170,29 @@ function SearchResults() {
                   <p className="text-gray-700">{hit.descripcion}</p>
 
                   {hit.imagenes && hit.imagenes.length > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-3">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
                       {hit.imagenes.map((img: string, idx: number) => {
                         const imageUrl = img.startsWith('/api/') ? img : `/api${img}`
                         return (
-                          <img
+                          <div 
                             key={idx}
-                            src={imageUrl}
-                            alt={`Imagen ${idx + 1}`}
-                            className="w-full h-32 object-cover rounded"
-                          />
+                            className="relative group cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openLightbox(hit.imagenes.map((i: string) => i), idx)
+                            }}
+                          >
+                            <img
+                              src={imageUrl}
+                              alt={`Imagen ${idx + 1}`}
+                              className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 group-hover:border-blue-500 transition-all"
+                            />
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center rounded-lg">
+                              <span className="text-white opacity-0 group-hover:opacity-100 text-2xl font-bold">
+                                🔍
+                              </span>
+                            </div>
+                          </div>
                         )
                       })}
                     </div>
@@ -183,6 +216,30 @@ function SearchResults() {
                         ⏰ {new Date(hit.timestamp).toLocaleString('es-VE')}
                       </p>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* Preview de imagen si hay */}
+              {hit.imagenes && hit.imagenes.length > 0 && expandedCard !== hit.id && (
+                <div className="mt-3">
+                  <div 
+                    className="relative cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      openLightbox(hit.imagenes.map((i: string) => i), 0)
+                    }}
+                  >
+                    <img
+                      src={hit.imagenes[0].startsWith('/api/') ? hit.imagenes[0] : `/api${hit.imagenes[0]}`}
+                      alt="Imagen principal"
+                      className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all flex items-center justify-center rounded-lg">
+                      <span className="text-white opacity-0 hover:opacity-100 text-lg font-bold bg-black bg-opacity-50 px-3 py-1 rounded">
+                        Ver imagen ({hit.imagenes.length})
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
