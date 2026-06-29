@@ -1,5 +1,7 @@
 'use client'
 
+import Image from 'next/image'
+
 interface CenterCardProps {
   data: any
   expanded: boolean
@@ -60,6 +62,27 @@ export default function CenterCard({ data, expanded, onToggle }: CenterCardProps
         <p className="text-sm text-gray-700 mb-2">
           {getCenterTypeLabel(data.centerType)}
         </p>
+
+        {/* Imágenes preview */}
+        {data.images && data.images.length > 0 && (
+          <div className="flex gap-2 mb-2">
+            {data.images.slice(0, 3).map((img: any, idx: number) => (
+              <div key={idx} className="relative w-20 h-20 rounded overflow-hidden">
+                <Image
+                  src={img.url}
+                  alt={`Imagen ${idx + 1}`}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            ))}
+            {data.images.length > 3 && (
+              <div className="w-20 h-20 bg-gray-200 rounded flex items-center justify-center text-sm text-gray-600">
+                +{data.images.length - 3}
+              </div>
+            )}
+          </div>
+        )}
 
         {expanded && (
           <div className="mt-4 pt-4 border-t border-gray-200 space-y-2 text-sm">

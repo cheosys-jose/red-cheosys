@@ -2,25 +2,43 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { centerSchema } from '@/lib/validators/schemas'
 import { MeiliSearch } from 'meilisearch'
+import { z } from 'zod'
 
 const meilisearch = new MeiliSearch({
   host: process.env.MEILISEARCH_URL || 'http://localhost:7700',
   apiKey: process.env.MEILISEARCH_KEY || 'red-cheosys-2026-change-me'
 })
 
+const centerSchemaWithImages = centerSchema.extend({
+  imageUrls: z.array(z.string()).optional()
+})
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const validatedData = centerSchema.parse(body)
+    const validatedData = centerSchemaWithImages.parse(body)
+    
+    const { imageUrls, ...centerData } = validatedData
     
     const center = await prisma.center.create({
       data: {
-        ...validatedData,
+        ...centerData,
         sourceType: 'INTERNAL',
         verificationStatus: 'UNVERIFIED',
         capacityStatus: 'RECEIVING'
       }
     })
+
+    if (imageUrls && imageUrls.length > 0) {
+      for (const url of imageUrls) {
+        await prisma.image.create({
+          data: {
+            url,
+            centerId: center.id
+          }
+        })
+      }
+    }
     
     try {
       await meilisearch.index('centers').addDocuments([{
@@ -60,6 +78,9 @@ export async function GET(request: NextRequest) {
     
     const centers = await prisma.center.findMany({
       where,
+      include: {
+        images: true
+      },
       orderBy: { createdAt: 'desc' },
       take: 50
     })

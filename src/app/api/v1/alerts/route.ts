@@ -2,10 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { alertSchema } from '@/lib/validators/schemas'
 import { MeiliSearch } from 'meilisearch'
+import { z } from 'zod'
 
 const meilisearch = new MeiliSearch({
   host: process.env.MEILISEARCH_URL || 'http://localhost:7700',
   apiKey: process.env.MEILISEARCH_KEY || 'red-cheosys-2026-change-me'
+})
+
+const alertSchemaWithImages = alertSchema.extend({
+  imageUrls: z.array(z.string()).optional()
 })
 
 export async function POST(request: NextRequest) {
@@ -14,18 +19,33 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('📋 Body recibido:', JSON.stringify(body, null, 2))
     
-    const validatedData = alertSchema.parse(body)
+    const validatedData = alertSchemaWithImages.parse(body)
     console.log('✅ Datos validados:', validatedData)
+    
+    const { imageUrls, ...alertData } = validatedData
     
     const alert = await prisma.alert.create({
       data: {
-        ...validatedData,
+        ...alertData,
         sourceType: 'INTERNAL',
         verificationStatus: 'UNVERIFIED',
         isActive: true
       }
     })
     console.log('✅ Alert creada en DB:', alert.id)
+
+    // Crear registros de imágenes si hay URLs
+    if (imageUrls && imageUrls.length > 0) {
+      for (const url of imageUrls) {
+        await prisma.image.create({
+          data: {
+            url,
+            alertId: alert.id
+          }
+        })
+      }
+      console.log(`✅ ${imageUrls.length} imágenes asociadas`)
+    }
     
     try {
       await meilisearch.index('alerts').addDocuments([{
@@ -73,6 +93,9 @@ export async function GET(request: NextRequest) {
     
     const alerts = await prisma.alert.findMany({
       where,
+      include: {
+        images: true
+      },
       orderBy: { createdAt: 'desc' },
       take: 50
     })

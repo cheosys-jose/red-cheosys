@@ -1,5 +1,7 @@
 'use client'
 
+import Image from 'next/image'
+
 interface AlertCardProps {
   data: any
   expanded: boolean
@@ -68,6 +70,27 @@ export default function AlertCard({ data, expanded, onToggle }: AlertCardProps) 
         <p className="text-sm text-gray-700 line-clamp-2 mb-2">
           {data.description}
         </p>
+
+        {/* Imágenes preview */}
+        {data.images && data.images.length > 0 && (
+          <div className="flex gap-2 mb-2">
+            {data.images.slice(0, 3).map((img: any, idx: number) => (
+              <div key={idx} className="relative w-20 h-20 rounded overflow-hidden">
+                <Image
+                  src={img.url}
+                  alt={`Imagen ${idx + 1}`}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            ))}
+            {data.images.length > 3 && (
+              <div className="w-20 h-20 bg-gray-200 rounded flex items-center justify-center text-sm text-gray-600">
+                +{data.images.length - 3}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Detalles expandidos */}
         {expanded && (

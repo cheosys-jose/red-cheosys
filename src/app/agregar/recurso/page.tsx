@@ -3,10 +3,13 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import ImageUpload from '@/components/ImageUpload'
+import { ConvertedImage } from '@/lib/imageConverter'
 
 export default function RecursoPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [images, setImages] = useState<ConvertedImage[]>([])
   const [formData, setFormData] = useState({
     category: '',
     coverageArea: '',
@@ -17,15 +20,43 @@ export default function RecursoPage() {
     locationLng: null as number | null
   })
 
+  const handleImagesSelected = (selectedImages: ConvertedImage[]) => {
+    setImages(selectedImages)
+  }
+
+  const uploadImages = async (): Promise<string[]> => {
+    if (images.length === 0) return []
+
+    const formDataUpload = new FormData()
+    images.forEach((img) => {
+      formDataUpload.append('files', img.file)
+    })
+
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      body: formDataUpload
+    })
+
+    if (!res.ok) throw new Error('Error al subir imágenes')
+
+    const data = await res.json()
+    return data.files
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     
     try {
+      const imageUrls = await uploadImages()
+
       const res = await fetch('/api/v1/resources', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          imageUrls
+        })
       })
       
       if (res.ok) {
@@ -167,6 +198,14 @@ export default function RecursoPage() {
                 placeholder="Teléfono / WhatsApp: Ej: +58 414 9876543"
               />
               <p className="text-xs text-gray-500 mt-1">{formData.providerContact.length}/50 caracteres</p>
+            </div>
+
+            {/* Imágenes */}
+            <div>
+              <label className="block text-lg font-semibold text-gray-900 mb-2">
+                6. Fotos del recurso (opcional)
+              </label>
+              <ImageUpload onImagesSelected={handleImagesSelected} maxImages={3} />
             </div>
 
             {/* Submit */}

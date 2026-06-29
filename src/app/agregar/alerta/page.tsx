@@ -3,10 +3,13 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import ImageUpload from '@/components/ImageUpload'
+import { ConvertedImage } from '@/lib/imageConverter'
 
 export default function AlertaPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [images, setImages] = useState<ConvertedImage[]>([])
   const [formData, setFormData] = useState({
     severity: '',
     alertType: '',
@@ -18,15 +21,45 @@ export default function AlertaPage() {
     locationLng: null as number | null
   })
 
+  const handleImagesSelected = (selectedImages: ConvertedImage[]) => {
+    setImages(selectedImages)
+  }
+
+  const uploadImages = async (): Promise<string[]> => {
+    if (images.length === 0) return []
+
+    const formDataUpload = new FormData()
+    images.forEach((img) => {
+      formDataUpload.append('files', img.file)
+    })
+
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      body: formDataUpload
+    })
+
+    if (!res.ok) throw new Error('Error al subir imágenes')
+
+    const data = await res.json()
+    return data.files
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     
     try {
+      // Subir imágenes primero
+      const imageUrls = await uploadImages()
+
+      // Crear alerta con URLs de imágenes
       const res = await fetch('/api/v1/alerts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          imageUrls // Agregar URLs de imágenes al payload
+        })
       })
       
       if (res.ok) {
@@ -212,6 +245,14 @@ export default function AlertaPage() {
                 placeholder="Teléfono / WhatsApp: Ej: +58 412 1234567"
               />
               <p className="text-xs text-gray-500 mt-1">{formData.reporterContact.length}/50 caracteres</p>
+            </div>
+
+            {/* Imágenes */}
+            <div>
+              <label className="block text-lg font-semibold text-gray-900 mb-2">
+                7. Fotos de la emergencia (opcional)
+              </label>
+              <ImageUpload onImagesSelected={handleImagesSelected} maxImages={3} />
             </div>
 
             {/* Submit */}
