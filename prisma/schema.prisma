@@ -17,12 +17,8 @@ model Alert {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  // Tipo de evento/catastrófe (opcional temporalmente)
-  eventType             String   @default("other") // earthquake, flood, hurricane, etc.
-
-  // Tipo de alerta (qué se necesita)
-  alertType             String   @default("other") // trapped_persons, medical_emergency, etc.
-
+  eventType             String   @default("other")
+  alertType             String   @default("other")
   severity              String   @default("SUPPORT")
   affectedPeople        String?
   exactLocation         String
@@ -73,6 +69,8 @@ model MissingPerson {
 
   fullName              String
   alias                 String?
+  documentId            String?  // NUEVO: Cédula, pasaporte, etc.
+  documentType          String?  // NUEVO: tipo de documento
   ageGroup              String
   gender                String
   lastSeenLocation      String
@@ -83,7 +81,7 @@ model MissingPerson {
 
   images                Image[]
 
-  @@index([fullName, ageGroup, gender])
+  @@index([fullName, documentId])
   @@index([lastSeenLocation])
   @@index([createdAt])
 }
@@ -100,6 +98,8 @@ model FoundPerson {
 
   condition             String
   declaredName          String?
+  documentId            String?  // NUEVO: Cédula, pasaporte, etc.
+  documentType          String?  // NUEVO: tipo de documento
   currentSafeLocation   String
   estimatedAgeGroup     String
   estimatedGender       String
@@ -109,8 +109,8 @@ model FoundPerson {
 
   images                Image[]
 
-  @@index([condition, currentSafeLocation])
-  @@index([estimatedAgeGroup, estimatedGender])
+  @@index([declaredName, documentId])
+  @@index([currentSafeLocation])
   @@index([createdAt])
 }
 
@@ -144,8 +144,8 @@ model ExternalLink {
   title            String
   url              String
   description      String
-  category         String   @default("news") // official, missing, centers, news
-  status           String   @default("pending") // pending, approved, rejected
+  category         String   @default("news")
+  status           String   @default("pending")
   verified         Boolean  @default(false)
   
   submitterName    String?
